@@ -5,22 +5,22 @@ import time
 
 def umidificadores(umidade,limite_interior, limite_superior):
 	if umidade < limite_interior:
-		#print("ligar_umidificadores")
+		print("ligar_umidificadores")
 		ser.write(COMANDOS["ligar_umidificadores"])
 	elif umidade >= limite_superior:
 		ser.write(COMANDOS["desligar_umidificadores"])
-		#print("desligar_umidificadores")
+		print("desligar_umidificadores")
 
 def luz(hora_ligar, hora_desligar=None):
 	hora = time.localtime()
 	hora = datetime.time(hora.tm_hour,hora.tm_min)
-	#print(hora)
+	print(hora)
 	if hora >= hora_ligar and hora < hora_desligar:
 		ser.write(COMANDOS["ligar_luz"])
-		#print("ligar_luz")
+		print("ligar_luz")
 	else:
 		ser.write(COMANDOS["desligar_luz"])
-		#print("desligar_luz")
+		print("desligar_luz")
 
 def timer(minutos):
 	minutos = minutos*60
@@ -39,8 +39,8 @@ def timer(minutos):
 
 PORTA = "/dev/ttyUSB0"
 VELOCIDADE = 9600
-COMANDOS = {"ligar_esxaustor_saida" : b"LES",
-			"desligar_esxaustor_saida" : b"DES",
+COMANDOS = {"ligar_esxaustor_saida" : b"LE",
+			"desligar_esxaustor_saida" : b"DE",
 			"ligar_luz" : b"LL",
 			"desligar_luz" : b"DL",
 			"ligar_umidificadores" : b"LU",
@@ -60,7 +60,7 @@ with serial.Serial(PORTA, VELOCIDADE) as ser:
 			temperatura = float(lista[1])
 			print(f'Umidade: {lista[0]}\nTemperatura: {lista[1]}')
 			umidificadores(umidade, 85.00, 95.00)
-			luz(datetime.time(8,0),datetime.time(14,49))
+			luz(datetime.time(8,0),datetime.time(22,58))
 			timer(1)
 		except:
 			pass
@@ -68,3 +68,4 @@ with serial.Serial(PORTA, VELOCIDADE) as ser:
 
 # enviar comandos para o arduino por serial
 # ser.write (b'comando_arduino_texto')
+teste.py
