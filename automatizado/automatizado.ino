@@ -1,9 +1,5 @@
 
 
-
-
-
-
 /*Biblioteca temperature.h é bibliteca padrão do arduino 
  * Temperature
  * by Rob Tillaart versão 0.2.4
@@ -36,11 +32,33 @@ float TEMP; // Guardar a variável temperatura
 float RU;   // Guardar a variável Umidade Relativa do Ar
 float PO;  // Guardar o ponto de Orvalho 
 
+
+// Psicrometro usando dois termometros
+
+float PSIC(float Ts, float Tu, float P, char Tipo='N'){
+  float A = 0.0008;  //Sem Ventilação forçada
+  if (Tipo == 'F'){
+    A = 0.000667; //Com Ventilação forçada
+  }
+  
+  float Es1 = 0.6108*pow(10,((7.5*Ts)/(237.3+Ts)));
+  float Es2 = 0.6108*pow(10,((7.5*Tu)/(237.3+Tu)));
+  float Ea = Es2 - A*P*(Ts-Tu);
+  float UR = Ea*100/Es1;
+  return UR;
+  
+  }
+
+
+
+
+
  
 void setup()
 {
  lcd.init();
  Serial.begin(9600); //INICIALIZA A SERIAL
+ lcd.clear();
 }
  
 void loop()
@@ -54,6 +72,8 @@ void loop()
   LCD(TEMP,RU,PO);
   UMD(TEMP,RU,PO);
   delay(2000); //INTERVALO DE 2 SEGUNDOS * NÃO DIMINUIR ESSE VALOR
+  float UR = PSIC(25,20,95);
+  Serial.println("\n"+String(UR)+"\n");
   
 }
 
@@ -74,7 +94,7 @@ void UMD(float TEMP, float RU, float PO){
 
 // PRintar no LCD os dados
 void LCD (float TEMP, float RU, float PO){
-    
+  //lcd.clear();  
   lcd.setBacklight(HIGH);
   lcd.setCursor(0,0);
   lcd.print("T/PO");
