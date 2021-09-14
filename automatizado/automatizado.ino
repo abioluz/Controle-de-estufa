@@ -1,6 +1,9 @@
 
 
-/*Biblioteca temperature.h é bibliteca padrão do arduino 
+/*
+ *Controle de estufa
+ 
+ *Biblioteca temperature.h é bibliteca padrão do arduino 
  * Temperature
  * by Rob Tillaart versão 0.2.4
  * Usado para calcular o ponto de orvalho da estufa.
