@@ -52,7 +52,7 @@ RTC_DS1307 rtc; //OBJETO DO TIPO RTC_DS1307 Para Relógio
 const PROGMEM byte RU_MAX = 95; // Umidade Relativa máxima de trabalho
 bool sim_nao = 0;
 char liga_desliga = 'L';
-int start = 20; //minutos
+int start = 1; //minutos para a gravação
 unsigned long time_inicio;
 unsigned long time_inicio_gravacao;
 // unsigned long time_fim;
@@ -141,12 +141,12 @@ void loop()
     lcd.setCursor(0,1);
     for (byte i=0; i < 16; i++){
       lcd.print(".");
-      delay(1000);
+      delay(500);
     }
 
     time_inicio = millis();
-    time_inicio_gravacao = millis();
-    return;
+    int controle = 0;
+    
 
   }
 
@@ -166,36 +166,39 @@ void loop()
   
   float RU;
   float PO;
-  float temp_s_0 = 0;
-  float temp_u_1 = 0;
-  for (int i = 0; i < 5; i++){
 
-    do{
-      Temp.requestTemperatures();
-      
-    } while (isnan(Temp.getTempCByIndex(0)) || Temp.getTempCByIndex(0) < -10 || Temp.getTempCByIndex(0) > 60 ||
-             isnan(Temp.getTempCByIndex(1)) || Temp.getTempCByIndex(1) < -10 || Temp.getTempCByIndex(1) > 60 
-            );
+  do{
+    Temp.requestTemperatures();
+    Serial.println("lendo temperatura");
+    Serial.println(Temp.getTempCByIndex(0));
+    Serial.println( Temp.getTempCByIndex(1));
+    RU = PSIC(Temp.getTempCByIndex(0), Temp.getTempCByIndex(1), 101.325);
+    PO = dewPoint(Temp.getTempCByIndex(0),RU);
+    
+  } while (Temp.getTempCByIndex(0) < -10 ||// Temp.getTempCByIndex(0) > 60 ||
+           Temp.getTempCByIndex(1) < -10 || // Temp.getTempCByIndex(1) > 60 ||
+           isnan(RU) || RU < 0 || RU > 200 ||
+           isnan(PO)
+          );
 
-    temp_s_0 += Temp.getTempCByIndex(0);
-    temp_u_1 += Temp.getTempCByIndex(1);
-
+   
   }
-  temp_s_0 /= 5;
-  temp_u_1 /= 5; 
+ 
 
-  RU = PSIC(temp_s_0, temp_u_1, 101.325);
-  PO = dewPoint(temp_s_0,RU);
-  
+  Serial.println("umidade e temp: ");
+  Serial.println(RU);
+  Serial.println(PO);
+  Serial.println(Temp.getTempCByIndex(0));
+  Serial.println(Temp.getTempCByIndex(1));
 
-  if ( millis() - time_inicio >= 0 && millis() - time_inicio <= 4000){
+  if ( millis() - time_inicio >= 0 && millis() - time_inicio <= 5000){
     if (sim_nao){
       lcd.clear();
       lcd.setCursor(0,0);
       lcd.print("T/PO");
       lcd.print((char)223);
       lcd.print("C:");
-      lcd.print(temp_s_0,1);
+      lcd.print(Temp.getTempCByIndex(0),1);
       lcd.print("/");
       lcd.print(PO,1);
       lcd.setCursor(0,1);
@@ -205,7 +208,7 @@ void loop()
       sim_nao = 1;
     }
   }
-  else if ( millis() - time_inicio > 4000 && millis() - time_inicio <= 8000){
+  else if ( millis() - time_inicio > 5000 && millis() - time_inicio <= 10000){
     if (sim_nao){
       lcd.clear();
       lcd.setCursor(0,0);
@@ -224,20 +227,21 @@ void loop()
       sim_nao = 0;
     }
   }
-  else if (millis() - time_inicio > 8000){
+  else if (millis() - time_inicio > 10000){
     time_inicio = millis();
+    controle += 1; 
 
   }
 
 
-  if ( millis() - time_inicio_gravacao > start*60000 ||dados_serial == 'S' ){ // 1 min = 60000
+  if (controle >= start*60 ||dados_serial == 'S' ){ // 1 min 
     UMD(Temp.getTempCByIndex(0),RU,PO);
-    time_inicio_gravacao = millis();
+    controle = 0;
     start = 5;
     lcd.clear();
     lcd.setCursor(0,0);
     lcd.print("Gravando");
-    lcd.setCursor(0,0);
+    lcd.setCursor(0,1);
     lcd.print("Arquivo");
 
     if (SD.begin()) {
@@ -263,9 +267,9 @@ void loop()
       myFile.print(";");
       myFile.print(RU,2);
       myFile.print(";");
-      myFile.print(temp_s_0,2);
+      myFile.print(Temp.getTempCByIndex(0),2);
       myFile.print(";");
-      myFile.print(temp_u_1,2);
+      myFile.print(Temp.getTempCByIndex(1),2);
       myFile.print(";");
       myFile.print(PO,2);
       myFile.print(";");
