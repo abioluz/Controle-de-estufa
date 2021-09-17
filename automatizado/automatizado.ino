@@ -23,225 +23,265 @@
  * https://www.filipeflop.com/blog/tutorial-modulo-bluetooth-com-arduino/
  */
  
-#include "temperature.h"
-#include <LiquidCrystal_I2C.h>
-#include "RTClib.h" //INCLUSÃO DA BIBLIOTECA
-#include <Wire.h> //INCLUSÃO DA BIBLIOTECA
-#include <OneWire.h>
-#include <DallasTemperature.h>
-#include <SD.h>
-#include <SPI.h>
-
-#include <SoftwareSerial.h> //INCLUSÃO DE BIBLIOTECA
+#include "temperature.h"            //Inclusão de biblioteca: Para o calculo do Ponto de orvalho. 
+#include <LiquidCrystal_I2C.h>      //Inclusão de biblioteca: Para usar o LCD.
+#include "RTClib.h"                 //Inclusão de biblioteca: Para poder usar o relógio.
+#include <OneWire.h>                //Inclusão de biblioteca: Para poder usar os sensores de temperatura DS18B20.
+#include <DallasTemperature.h>      //Inclusão de biblioteca: Para poder usar os sensores de temperatura DS18B20.
+#include <SD.h>                     //Inclusão de biblioteca: Para usar o microSSD.
+#include <SPI.h>                    //Inclusão de biblioteca: Para usar o microSSD.       
 
 
-const int pinoRX = 0; //PINO DIGITAL 2 (RX)
-const int pinoTX = 2; //PINO DIGITAL 3 (TX)
-int dadoBluetooth; //VARIÁVEL QUE ARMAZENA O VALOR ENVIADO PELO BLUETOOTH
 
 
-SoftwareSerial bluetooth(pinoRX, pinoTX); //PINOS QUE EMULAM A SERIAL, ONDE
-//O PINO 2 É O RX E O PINO 3 É O TX
 
-//Inicializa o display no endereco 0x27
-LiquidCrystal_I2C lcd(0x27,16,2);
-
-//OBJETO DO TIPO RTC_DS1307 Para Relógio
-RTC_DS1307 rtc; 
-
-// Ativando Sensor de temperatura DS18B20
-// Definindo a porta para a leitura
-#define ONE_WIRE_BUS 4
-// Setup a oneWire instance to communicate with any OneWire devices (not just Maxim/Dallas temperature ICs)
-OneWire oneWire(ONE_WIRE_BUS);
-// Pass our oneWire reference to Dallas Temperature. 
-DallasTemperature sensors(&oneWire);
-// arrays to hold device address
+OneWire oneWire(4); // Termometro no pino quatro
+DallasTemperature Temp(&oneWire);
 DeviceAddress insideThermometer;
+LiquidCrystal_I2C lcd(0x27,16,2); //Inicializa o display no endereco 0x27
+RTC_DS1307 rtc; //OBJETO DO TIPO RTC_DS1307 Para Relógio
 
-// SD
-File myFile;
 
-// Variáveis
-int pinoSS = 10;
-int RU_MAX = 90; // Umidade Relativa máxima de trabalho
-float Temp_seco_0; // Temperatura ambiente e do bulbo seco
-float Temp_umido_1; // Temperatura do bulbo úmido
-float RU;   // Guardar a variável Umidade Relativa do Ar
-float PO;  // Guardar o ponto de Orvalho 
-char daysOfTheWeek[7][4] = {"Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"};
+
+int RU_MAX = 95; // Umidade Relativa máxima de trabalho
+int sim_nao = 0;
+char liga_desliga = 'L';
+int start = 20; //minutos
 unsigned long time_inicio;
 unsigned long time_inicio_gravacao;
-unsigned long time_fim;
+// unsigned long time_fim;
 
 
 // Psicrometro usando dois termometros
-float PSIC(float Ts, float Tu, float P, char Tipo='N'){
-  float A = 0.0008;  //Sem Ventilação forçada
+float PSIC(float Ts, float Tu, float P, char Tipo='N'){ 
+  float A;
   if (Tipo == 'F'){
     A = 0.000667; //Com Ventilação forçada
-  }  
+  }
+  else{
+    A = 0.0008;  //Sem Ventilação forçada
+  } 
   float Es1 = 0.6108*pow(10,((7.5*Ts)/(237.3+Ts)));
   float Es2 = 0.6108*pow(10,((7.5*Tu)/(237.3+Tu)));
   float Ea = Es2 - A*P*(Ts-Tu);
   float UR = Ea*100/Es1;
   return UR;
-  }
+}
 
 
- 
+
 void setup()
 {
- bluetooth.begin(9600); //INICIALIZA A SERIAL DO BLUETOOTH
-  
- time_inicio = millis();
- time_inicio_gravacao = millis();
- Serial.begin(9600); //INICIALIZA A SERIAL
- sensors.begin(); // Sensor de temperatura
- // set the resolution to 9 bit (Each Dallas/Maxim device is capable of several different resolutions)
-  sensors.setResolution(insideThermometer, 9);
+  // Inicializando 
+  Serial.begin(9600); //INICIALIZA A SERIAL
+  Temp.begin(); // Sensor de temperatura
+  Temp.setResolution(insideThermometer, 9);
+  pinMode(10, OUTPUT); // Declara pinoSS como saída
+  pinMode(8, OUTPUT); 
+  digitalWrite(8, HIGH);
+  lcd.init();
+  lcd.setBacklight(HIGH);
+  lcd.clear();
+  time_inicio = millis();
+  time_inicio_gravacao = millis();
 
- // Iniciando o LCD 
- lcd.init();
- lcd.setBacklight(HIGH);
- lcd.clear();
-
- // Iniciando o RCT
- if (! rtc.begin()) { // SE O RTC NÃO FOR INICIALIZADO, FAZ
-    Serial.println("DS1307 não encontrado"); //IMPRIME O TEXTO NO MONITOR SERIAL
-    while(1); //SEMPRE ENTRE NO LOOP
+  if (! rtc.begin()) { 
+    Serial.println("DS1307 não encontrado"); 
+    while(1); 
   }
- if (rtc.isrunning()) { //SE RTC NÃO ESTIVER SENDO EXECUTADO, FAZ
-    Serial.println("DS1307 rodando!"); //IMPRIME O TEXTO NO MONITOR SERIAL
-    // REMOVA O COMENTÁRIO DE UMA DAS LINHAS ABAIXO PARA INSERIR AS INFORMAÇÕES ATUALIZADAS EM SEU RTC
+  if (rtc.isrunning()) { 
+    Serial.println("DS1307 rodando!");
     // rtc.adjust(DateTime(F(__DATE__), F(__TIME__))); //CAPTURA A DATA E HORA EM QUE O SKETCH É COMPILADO
     // rtc.adjust(DateTime(2018, 7, 5, 1, 1, 1)); //(ANO), (MÊS), (DIA), (HORA), (MINUTOS), (SEGUNDOS)
   }
-// rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
-  
 }
 
  
 void loop()
 {
-  //delay(495);
-  DateTime now = rtc.now(); //CHAMADA DE FUNÇÃO
-  sensors.requestTemperatures();
-  Temp_seco_0 = sensors.getTempCByIndex(0);
-  Temp_umido_1 = sensors.getTempCByIndex(1);
-  RU = PSIC(Temp_seco_0, Temp_umido_1, 101.325);
-  PO = dewPoint(Temp_seco_0, RU);
+  int dados_serial = Serial.read();
+  DateTime data_hora = rtc.now();
+  Temp.requestTemperatures();
+  
+  
 
-  if ( millis() - time_inicio_gravacao > 300000){ // 5 min = 300000
-    time_inicio_gravacao = millis();
-    String texto = String(now.day())+";"+String(now.month())+";"+String(now.year())+";"+String(now.hour())+";"+String(now.minute())+";"+String(now.second())+";"+String(RU,1)+";"+ String(Temp_seco_0,1)+";"+ String(Temp_umido_1,1)+";"+String(PO,1);
-    Serial.println(texto); //IMPRIME NA SERIAL O VALOR DE UMIDADE MEDIDO
-    escrever(texto);
-    ler();
+  if ( millis() - time_inicio >= 0 && millis() - time_inicio <= 4000){
+    if (sim_nao == 0){
+      LCD("T/PO"+String((char)223)+"C:"+String(Temp.getTempCByIndex(0),1)+"/"+String(dewPoint(Temp.getTempCByIndex(0),PSIC(Temp.getTempCByIndex(0), Temp.getTempCByIndex(1), 101.325)),1), "Umidade: "+String(PSIC(Temp.getTempCByIndex(0), Temp.getTempCByIndex(1), 101.325),1)+"%");
+      sim_nao = 1;
+    }
+  }
+  if ( millis() - time_inicio > 4000 && millis() - time_inicio <= 8000){
+    if (sim_nao == 1){
+      LCD("Data: "+String(data_hora.day())+"/"+String(data_hora.month())+"/"+String(data_hora.year()), String(data_hora.hour())+":"+String(data_hora.minute())+"    Umid: "+String(liga_desliga));
+      sim_nao = 0;
+    }
+  }
+  if (millis() - time_inicio > 8000){
+    time_inicio = millis();
 
   }
-  String temperatura = "T/PO"+String((char)223)+"C:"+String(Temp_seco_0,1)+"/"+String(PO,1);
-  String umidade = "Umidade: "+String(RU,1)+"%";
-  String data = String(daysOfTheWeek[now.dayOfTheWeek()])+": "+String(now.day())+"/"+String(now.month())+"/"+String(now.year());
-  String hora = "    "+String(now.hour())+":"+String(now.minute())+":"+String(now.second());
-  LCD(temperatura, umidade, data, hora);
 
-  if(bluetooth.available()){ //SE O BLUETOOTH ESTIVER HABILITADO, FAZ
-       dadoBluetooth = bluetooth.read(); //VARIÁVEL RECEBE O VALOR ENVIADO PELO BLUETOOTH
-       Serial.println(dadoBluetooth);
-       if (dadoBluetooth == 'V'){
-        Serial.println("Deu certo");
-        ler();
-       }
-       else{
-        Serial.println("Ainda não");}
-       
-  }  
 
+  if ( millis() - time_inicio_gravacao > start*60000 ||dados_serial == 'S' ){ // 5 min = 300000
+    UMD(Temp.getTempCByIndex(0),PSIC(Temp.getTempCByIndex(0), Temp.getTempCByIndex(1), 101.325),dewPoint(Temp.getTempCByIndex(0),PSIC(Temp.getTempCByIndex(0), Temp.getTempCByIndex(1), 101.325)));
+    time_inicio_gravacao = millis();
+    start = 5;
   
-  //UMD(Temp_seco_0,RU,PO);
+  if (SD.begin()) {
+      Serial.println("SD Card pronto para uso."); 
+    }
+    else {
+      Serial.println("Falha na inicialização do SD Card.");
+      return;
+    } 
+    File myFile = SD.open("estufa.txt", FILE_WRITE); 
+    if (myFile) { 
+      myFile.println(String(data_hora.day())+"/"+String(data_hora.month())+"/"+String(data_hora.year())+";"+
+             String(data_hora.hour())+":"+String(data_hora.minute())+":"+String(data_hora.second())+";"+
+             String(PSIC(Temp.getTempCByIndex(0), Temp.getTempCByIndex(1), 101.325),2)+";"+ String(Temp.getTempCByIndex(0),2)+";"+ String(Temp.getTempCByIndex(1),2)+";"+String(dewPoint(Temp.getTempCByIndex(0),PSIC(Temp.getTempCByIndex(0), Temp.getTempCByIndex(1), 101.325)),2)+";"+String(liga_desliga)); 
+      Serial.println("Salvando dados");
+      
+    }
+    else {     
+      Serial.println("Erro ao Abrir Arquivo .txt");
+    }
+    myFile.close();
+    
+
+             
+  }
+
+  if (dados_serial != -1 && dados_serial != 10){
+    Serial.println(dados_serial);
+    switch (dados_serial){
+
+      case 'L':
+        Serial.println("Lendo Arquivo");
+        ler();
+        break;
+
+      case 'A':
+        Serial.println("Apagando");
+        apagar();
+        break;
+
+      case 'S':
+        //Serial.println("Salvando");
+        //escrever(data);
+        //escrever(hora);
+       // escrever(String(RU,1)+";"+ String(Temp.getTempCByIndex(0),1)+";"+ String(Temp.getTempCByIndex(1),1)+";"+String(PO,1));
+        break;
+
+      default:
+        Serial.println("Comando Inválido");
+        // LCD("Comando","Invalido");
+        // delay(3000);
+        break;
+    }
+  }
   
 }
 
 void UMD(float TEMP, float RU, float PO){
-  if (PO <= TEMP){
+  if (PO >= TEMP){
     Serial.println("Desliga");
+    digitalWrite(8, LOW);
+    if (liga_desliga != 'D'){
+      liga_desliga = 'D'; 
+    }
+  }
+  else{
+    if (RU <= RU_MAX){
+      Serial.println("Liga");
+      digitalWrite(8, HIGH);
+      if (liga_desliga != 'L'){
+        liga_desliga = 'L';
+      }
     }
     else{
-      if (RU <= RU_MAX){
-        Serial.println("Liga");
-        }
-        else{
-          Serial.println("Desliga2");
-          }
+      Serial.println("Desliga2");
+      digitalWrite(8, LOW);
+      if (liga_desliga != 'D'){
+        liga_desliga = 'D';
+
       }
+    }
   }
+}
 
 
 // Printar no LCD os dados
-void LCD (String temperatura, String umidade, String data, String hora){
-   if (millis()-time_inicio > 10000){
-    time_inicio = millis();
-  
-  }
+void LCD (String Primeira, String Segunda){
   lcd.clear();
-  if (millis()-time_inicio <= 5000){
-    lcd.setCursor(0,0);
-    lcd.print(temperatura);
-    lcd.setCursor(0,1);
-    lcd.print(umidade);
-    
-  }
-  if (millis()-time_inicio > 5000){
-    lcd.setCursor(0,0);
-    lcd.print(data);
-    lcd.setCursor(0,1);
-    lcd.print(hora);
-  }
- 
- 
+  lcd.setCursor(0,0);
+  lcd.print(Primeira);
+  lcd.setCursor(0,1);
+  lcd.print(Segunda); 
 }
 
+/*
 void escrever(String texto){
-  pinMode(pinoSS, OUTPUT); // Declara pinoSS como saída
   
-  if (SD.begin()) { // Inicializa o SD Card
-    Serial.println("SD Card pronto para uso."); // Imprime na tela
+  if (SD.begin()) {
+    Serial.println("SD Card pronto para uso."); 
   }
- 
   else {
     Serial.println("Falha na inicialização do SD Card.");
     return;
   } 
-  
-  myFile = SD.open("estufa.txt", FILE_WRITE); // Cria / Abre arquivo .txt
-  if (myFile) { // Se o Arquivo abrir imprime:
-    myFile.println(texto); // Escreve no Arquivo
-    myFile.close(); // Fecha o Arquivo após escrever
-  }  
-  
+  File myFile = SD.open("estufa.txt", FILE_WRITE); 
+  if (myFile) { 
+    myFile.println(texto); 
+    Serial.println("Salvando dados");
+    Serial.println(texto);
+  }
+  else {     
+    Serial.println("Erro ao Abrir Arquivo .txt");
+  }
+  myFile.close();
 }
+*/
 
 void ler(){
-  if (SD.begin()) { // Inicializa o SD Card
-    Serial.println("SD Card pronto para uso."); // Imprime na tela
+  if (SD.begin()) {
+    Serial.println("SD Card pronto para uso."); 
   }
- 
   else {
     Serial.println("Falha na inicialização do SD Card.");
     return;
   } 
 
-
-  myFile = SD.open("estufa.txt"); // Abre o Arquivo
+  File myFile = SD.open("estufa.txt");
  
   if (myFile) { 
-    while (myFile.available()) { // Exibe o conteúdo do Arquivo
+    while (myFile.available()) {
       Serial.write(myFile.read());
     }
- 
-  myFile.close(); // Fecha o Arquivo após ler
   }
+  else {
+    Serial.println("Falha na inicialização do SD Card.");
+    return;
+  } 
+  myFile.close();
 }
+
+void apagar(){
+  if (SD.begin()) {
+    Serial.println("SD Card pronto para uso.");
+  }
+  else {
+    Serial.println("Falha na inicialização do SD Card.");
+    return;
+  }
+  SD.remove("estufa.txt");
+  File myFile = SD.open("estufa.txt");
+  if (!myFile) { 
+    Serial.println("Arquivo Apagado com sucesso!");
+  }
+  myFile.close();
+
+}
+
 
   
