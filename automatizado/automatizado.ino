@@ -52,7 +52,7 @@ RTC_DS1307 rtc; //OBJETO DO TIPO RTC_DS1307 Para Relógio
 const PROGMEM byte RU_MAX = 95; // Umidade Relativa máxima de trabalho
 bool sim_nao = 0;
 char liga_desliga = 'L';
-int start = 1; //minutos para a gravação
+int start = 20; //minutos
 unsigned long time_inicio;
 int controle = 0;
 // unsigned long time_inicio_gravacao;
@@ -104,11 +104,10 @@ void setup()
 void loop()
 {
   int dados_serial = Serial.read();
-  DateTime data_hora = rtc.now();
-  Serial.println(controle);
-  Serial.println(millis()-time_inicio);
+ 
 
-  if (millis() < 10000){
+
+  if (millis() <= 10000){
 
     if (SD.begin()) {
       Serial.println("SD Card pronto para uso."); 
@@ -119,6 +118,8 @@ void loop()
     } 
     File myFile = SD.open("estufa.txt", FILE_WRITE); 
     if (myFile) { 
+      DateTime data_hora = rtc.now();
+
       myFile.print(data_hora.day());
       myFile.print("/");
       myFile.print(data_hora.month());
@@ -146,6 +147,9 @@ void loop()
       lcd.print(".");
       delay(500);
     }
+
+    time_inicio = millis();
+    
     
 
   }
@@ -166,12 +170,15 @@ void loop()
   
   float RU;
   float PO;
+  float temp_s_0 = 0;
+  float temp_u_1 = 0;
 
-  do{
+/* 
+ do{
     Temp.requestTemperatures();
-    /* Serial.println("lendo temperatura");
+    Serial.println("lendo temperatura");
     Serial.println(Temp.getTempCByIndex(0));
-    Serial.println( Temp.getTempCByIndex(1)); */
+    Serial.println( Temp.getTempCByIndex(1)); 
     RU = PSIC(Temp.getTempCByIndex(0), Temp.getTempCByIndex(1), 101.325);
     PO = dewPoint(Temp.getTempCByIndex(0),RU);
     
@@ -179,26 +186,39 @@ void loop()
            Temp.getTempCByIndex(1) < -10 || // Temp.getTempCByIndex(1) > 60 ||
            isnan(RU) || RU < 0 || RU > 200 ||
            isnan(PO)
-          );
+          ); */
 
-   
+
   
- 
-/*
-  Serial.println("umidade e temp: ");
-  Serial.println(RU);
-  Serial.println(PO);
-  Serial.println(Temp.getTempCByIndex(0));
-  Serial.println(Temp.getTempCByIndex(1));
-*/
+
+  // Serial.println("umidade e temp: ");
+  // Serial.println(RU);
+  // Serial.println(PO);
+  // Serial.println(temp_s_0);
+  // Serial.println(temp_u_1);
+
   if ( millis() - time_inicio >= 0 && millis() - time_inicio <= 5000){
     if (! sim_nao){
+
+      
+    do{
+      Temp.requestTemperatures();    
+      temp_s_0 = Temp.getTempCByIndex(0);
+      temp_u_1 = Temp.getTempCByIndex(1);
+      RU = PSIC(temp_s_0, temp_u_1, 101.325);
+      PO = dewPoint(temp_s_0,RU);
+    } while (isnan(Temp.getTempCByIndex(0)) || Temp.getTempCByIndex(0) < -10 || Temp.getTempCByIndex(0) > 60 ||
+             isnan(Temp.getTempCByIndex(1)) || Temp.getTempCByIndex(1) < -10 || Temp.getTempCByIndex(1) > 60 ||
+             isnan(RU) || RU < 0 || RU > 200 ||
+             isnan(PO)
+            );
+
       lcd.clear();
       lcd.setCursor(0,0);
       lcd.print("T/PO");
       lcd.print((char)223);
       lcd.print("C:");
-      lcd.print(Temp.getTempCByIndex(0),1);
+      lcd.print(temp_s_0,1);
       lcd.print("/");
       lcd.print(PO,1);
       lcd.setCursor(0,1);
@@ -210,6 +230,8 @@ void loop()
   }
   else if ( millis() - time_inicio > 5000 && millis() - time_inicio <= 10000){
     if (sim_nao){
+      DateTime data_hora = rtc.now();
+
       lcd.clear();
       lcd.setCursor(0,0);
       lcd.print("Data: ");
@@ -229,20 +251,41 @@ void loop()
   }
   else if (millis() - time_inicio > 10000){
     time_inicio = millis();
-    controle += 1; 
+    controle +=1;
 
   }
 
 
-  if (controle >= start*60 ||dados_serial == 'S' ){ // 1 min 
-    UMD(Temp.getTempCByIndex(0),RU,PO);
-    controle = 0;
+  if ( controle > start*60 ||dados_serial == 'S' ){ // 1 min = 60000
+    time_inicio = millis();
+    sim_nao = 0;            
     start = 5;
+    controle  = 0;
     lcd.clear();
     lcd.setCursor(0,0);
     lcd.print("Gravando");
     lcd.setCursor(0,1);
     lcd.print("Arquivo");
+
+    for (int i = 0; i < 10; i++){
+      do{
+        Temp.requestTemperatures();    
+      } while (isnan(Temp.getTempCByIndex(0)) || Temp.getTempCByIndex(0) < -10 || Temp.getTempCByIndex(0) > 60 ||
+             isnan(Temp.getTempCByIndex(1)) || Temp.getTempCByIndex(1) < -10 || Temp.getTempCByIndex(1) > 60 
+            );
+      temp_s_0 += Temp.getTempCByIndex(0);
+      temp_u_1 += Temp.getTempCByIndex(1);
+    }
+    temp_s_0 /= 10;
+    temp_u_1 /= 10; 
+    do{
+      RU = PSIC(temp_s_0, temp_u_1, 101.325);
+      PO = dewPoint(temp_s_0,RU);
+    } while(isnan(RU) || RU < 0 || RU > 200 ||
+            isnan(PO));
+    DateTime data_hora = rtc.now();
+
+    UMD(temp_s_0,RU,PO);
 
     if (SD.begin()) {
       Serial.println("SD Card pronto para uso."); 
@@ -267,23 +310,20 @@ void loop()
       myFile.print(";");
       myFile.print(RU,2);
       myFile.print(";");
-      myFile.print(Temp.getTempCByIndex(0),2);
+      myFile.print(temp_s_0,2);
       myFile.print(";");
-      myFile.print(Temp.getTempCByIndex(1),2);
+      myFile.print(temp_u_1,2);
       myFile.print(";");
       myFile.print(PO,2);
       myFile.print(";");
       myFile.println(liga_desliga);
       Serial.println("Salvando dados");
-      
     }
     else {     
       Serial.println("Erro ao Abrir Arquivo .txt");
     }
     myFile.close(); 
     delay(5000);
-    time_inicio = millis();
-    sim_nao = 0;            
   }
 
   if (dados_serial != -1 && dados_serial != 10){
