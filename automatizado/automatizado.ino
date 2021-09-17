@@ -94,11 +94,12 @@ void loop()
 {
   int dados_serial = Serial.read();
   DateTime data_hora = rtc.now();
-
+  float RU;
+  float PO;
   do{
     Temp.requestTemperatures();
-    float RU = PSIC(Temp.getTempCByIndex(0), Temp.getTempCByIndex(1), 101.325);
-    float PO = dewPoint(Temp.getTempCByIndex(0),RU);
+     RU = PSIC(Temp.getTempCByIndex(0), Temp.getTempCByIndex(1), 101.325);
+     PO = dewPoint(Temp.getTempCByIndex(0),RU);
 
   } while (isnan(Temp.getTempCByIndex(0)) || Temp.getTempCByIndex(0) < -10 || Temp.getTempCByIndex(0) > 60 ||
            isnan(Temp.getTempCByIndex(1)) || Temp.getTempCByIndex(1) < -10 || Temp.getTempCByIndex(1) > 60 ||
@@ -118,7 +119,7 @@ void loop()
       lcd.print("C:");
       lcd.print(Temp.getTempCByIndex(0),1);
       lcd.print("/");
-      lcd.print(PO),1);
+      lcd.print(PO,1);
       lcd.setCursor(0,1);
       lcd.print("Umidade: ");
       lcd.print(RU,1);
