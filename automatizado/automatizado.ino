@@ -49,7 +49,7 @@ DeviceAddress insideThermometer;
 LiquidCrystal_I2C lcd(0x27,16,2); //Inicializa o display no endereco 0x27
 RTC_DS1307 rtc; //OBJETO DO TIPO RTC_DS1307 Para Relógio
 
-const PROGMEM byte RU_MAX = 95; // Umidade Relativa máxima de trabalho
+const PROGMEM byte RU_MAX = 92; // Umidade Relativa máxima de trabalho
 bool sim_nao = 0;
 char liga_desliga = 'L';
 int start = 20; //minutos
