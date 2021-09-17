@@ -49,7 +49,7 @@ DeviceAddress insideThermometer;
 LiquidCrystal_I2C lcd(0x27,16,2); //Inicializa o display no endereco 0x27
 RTC_DS1307 rtc; //OBJETO DO TIPO RTC_DS1307 Para Relógio
 
-int RU_MAX = 95; // Umidade Relativa máxima de trabalho
+const PROGMEM byte RU_MAX = 95; // Umidade Relativa máxima de trabalho
 bool sim_nao = 0;
 char liga_desliga = 'L';
 int start = 20; //minutos
@@ -86,12 +86,11 @@ void setup()
   lcd.init();
   lcd.setBacklight(HIGH);
   lcd.clear();
-  time_inicio = millis();
-  time_inicio_gravacao = millis();
+  
 
   if (! rtc.begin()) { 
     Serial.println("DS1307 não encontrado"); 
-    while(1); 
+    //while(1); 
   }
   if (rtc.isrunning()) { 
     Serial.println("DS1307 rodando!");
@@ -106,6 +105,50 @@ void loop()
   int dados_serial = Serial.read();
   DateTime data_hora = rtc.now();
 
+  if (millis() <= 10000){
+
+    if (SD.begin()) {
+      Serial.println("SD Card pronto para uso."); 
+    }
+    else {
+      Serial.println("Falha na inicialização do SD Card.");
+      return;
+    } 
+    File myFile = SD.open("estufa.txt", FILE_WRITE); 
+    if (myFile) { 
+      myFile.print(data_hora.day());
+      myFile.print("/");
+      myFile.print(data_hora.month());
+      myFile.print("/");
+      myFile.print(data_hora.year());
+      myFile.print(";");
+      myFile.print(data_hora.hour());
+      myFile.print(":");
+      myFile.print(data_hora.minute());
+      myFile.print(":");
+      myFile.print(data_hora.second());
+      myFile.println(";NAN;NAN;NAN;NAN;START");
+      Serial.println("Salvando dados");
+    }
+    else {     
+      Serial.println("Erro ao Abrir Arquivo .txt");
+    }
+    myFile.close(); 
+
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("INICIALIZANDO!");
+    lcd.setCursor(0,1);
+    for (byte i=0; i < 16; i++){
+      lcd.print(".");
+      delay(1000);
+    }
+
+    time_inicio = millis();
+    time_inicio_gravacao = millis();
+    return;
+
+  }
 
 
 /*   float RU;
@@ -129,9 +172,9 @@ void loop()
 
     do{
       Temp.requestTemperatures();
-
+      
     } while (isnan(Temp.getTempCByIndex(0)) || Temp.getTempCByIndex(0) < -10 || Temp.getTempCByIndex(0) > 60 ||
-            isnan(Temp.getTempCByIndex(1)) || Temp.getTempCByIndex(1) < -10 || Temp.getTempCByIndex(1) > 60 
+             isnan(Temp.getTempCByIndex(1)) || Temp.getTempCByIndex(1) < -10 || Temp.getTempCByIndex(1) > 60 
             );
 
     temp_s_0 += Temp.getTempCByIndex(0);
