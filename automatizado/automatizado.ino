@@ -38,8 +38,6 @@ DeviceAddress insideThermometer;
 LiquidCrystal_I2C lcd(0x27,16,2); //Inicializa o display no endereco 0x27
 RTC_DS1307 rtc; //OBJETO DO TIPO RTC_DS1307 Para Relógio
 
-
-
 int RU_MAX = 95; // Umidade Relativa máxima de trabalho
 int sim_nao = 0;
 char liga_desliga = 'L';
@@ -47,7 +45,6 @@ int start = 20; //minutos
 unsigned long time_inicio;
 unsigned long time_inicio_gravacao;
 // unsigned long time_fim;
-
 
 // Psicrometro usando dois termometros
 float PSIC(float Ts, float Tu, float P, char Tipo='N'){ 
@@ -64,7 +61,6 @@ float PSIC(float Ts, float Tu, float P, char Tipo='N'){
   float UR = Ea*100/Es1;
   return UR;
 }
-
 
 
 void setup()
@@ -98,13 +94,18 @@ void loop()
 {
   int dados_serial = Serial.read();
   DateTime data_hora = rtc.now();
-  Temp.requestTemperatures();
-  float RU = PSIC(Temp.getTempCByIndex(0), Temp.getTempCByIndex(1), 101.325);
-  while (RU < 0 ||RU > 100 || Temp.getTempCByIndex(0) > -10 ){
+
+  do{
     Temp.requestTemperatures();
-    RU = PSIC(Temp.getTempCByIndex(0), Temp.getTempCByIndex(1), 101.325);
-  }
-  float PO = dewPoint(Temp.getTempCByIndex(0),RU);
+    float RU = PSIC(Temp.getTempCByIndex(0), Temp.getTempCByIndex(1), 101.325);
+    float PO = dewPoint(Temp.getTempCByIndex(0),RU);
+
+  } while (isnan(Temp.getTempCByIndex(0)) || Temp.getTempCByIndex(0) < -10 || Temp.getTempCByIndex(0) > 60 ||
+           isnan(Temp.getTempCByIndex(1)) || Temp.getTempCByIndex(1) < -10 || Temp.getTempCByIndex(1) > 60 ||
+           isnan(RU) ||  RU < 0 || RU > 150 ||
+           isnan(PO) 
+          );
+  
   
   
 
