@@ -54,7 +54,8 @@ bool sim_nao = 0;
 char liga_desliga = 'L';
 int start = 1; //minutos para a gravação
 unsigned long time_inicio;
-unsigned long time_inicio_gravacao;
+int controle = 0;
+// unsigned long time_inicio_gravacao;
 // unsigned long time_fim;
 
 // Psicrometro usando dois termometros
@@ -104,8 +105,10 @@ void loop()
 {
   int dados_serial = Serial.read();
   DateTime data_hora = rtc.now();
+  Serial.println(controle);
+  Serial.println(millis()-time_inicio);
 
-  if (millis() <= 10000){
+  if (millis() < 10000){
 
     if (SD.begin()) {
       Serial.println("SD Card pronto para uso."); 
@@ -143,9 +146,6 @@ void loop()
       lcd.print(".");
       delay(500);
     }
-
-    time_inicio = millis();
-    int controle = 0;
     
 
   }
@@ -169,9 +169,9 @@ void loop()
 
   do{
     Temp.requestTemperatures();
-    Serial.println("lendo temperatura");
+    /* Serial.println("lendo temperatura");
     Serial.println(Temp.getTempCByIndex(0));
-    Serial.println( Temp.getTempCByIndex(1));
+    Serial.println( Temp.getTempCByIndex(1)); */
     RU = PSIC(Temp.getTempCByIndex(0), Temp.getTempCByIndex(1), 101.325);
     PO = dewPoint(Temp.getTempCByIndex(0),RU);
     
@@ -182,17 +182,17 @@ void loop()
           );
 
    
-  }
+  
  
-
+/*
   Serial.println("umidade e temp: ");
   Serial.println(RU);
   Serial.println(PO);
   Serial.println(Temp.getTempCByIndex(0));
   Serial.println(Temp.getTempCByIndex(1));
-
+*/
   if ( millis() - time_inicio >= 0 && millis() - time_inicio <= 5000){
-    if (sim_nao){
+    if (! sim_nao){
       lcd.clear();
       lcd.setCursor(0,0);
       lcd.print("T/PO");
