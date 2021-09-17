@@ -32,9 +32,6 @@
 #include <SPI.h>                    //Inclusão de biblioteca: Para usar o microSSD.       
 
 
-
-
-
 OneWire oneWire(4); // Termometro no pino quatro
 DallasTemperature Temp(&oneWire);
 DeviceAddress insideThermometer;
@@ -76,9 +73,9 @@ void setup()
   Serial.begin(9600); //INICIALIZA A SERIAL
   Temp.begin(); // Sensor de temperatura
   Temp.setResolution(insideThermometer, 9);
-  pinMode(10, OUTPUT); // Declara pinoSS como saída
-  pinMode(8, OUTPUT); 
-  digitalWrite(8, HIGH);
+  pinMode(10, OUTPUT); 
+  pinMode(8, OUTPUT);  // Porta do relé
+  digitalWrite(8, HIGH); // Ativando relé
   lcd.init();
   lcd.setBacklight(HIGH);
   lcd.clear();
@@ -102,33 +99,68 @@ void loop()
   int dados_serial = Serial.read();
   DateTime data_hora = rtc.now();
   Temp.requestTemperatures();
+  float RU = PSIC(Temp.getTempCByIndex(0), Temp.getTempCByIndex(1), 101.325);
+  while (RU < 0 ||RU > 100 || Temp.getTempCByIndex(0) > -10 ){
+    Temp.requestTemperatures();
+    RU = PSIC(Temp.getTempCByIndex(0), Temp.getTempCByIndex(1), 101.325);
+  }
+  float PO = dewPoint(Temp.getTempCByIndex(0),RU);
   
   
 
   if ( millis() - time_inicio >= 0 && millis() - time_inicio <= 4000){
     if (sim_nao == 0){
-      LCD("T/PO"+String((char)223)+"C:"+String(Temp.getTempCByIndex(0),1)+"/"+String(dewPoint(Temp.getTempCByIndex(0),PSIC(Temp.getTempCByIndex(0), Temp.getTempCByIndex(1), 101.325)),1), "Umidade: "+String(PSIC(Temp.getTempCByIndex(0), Temp.getTempCByIndex(1), 101.325),1)+"%");
+      lcd.clear();
+      lcd.setCursor(0,0);
+      lcd.print("T/PO");
+      lcd.print((char)223);
+      lcd.print("C:");
+      lcd.print(Temp.getTempCByIndex(0),1);
+      lcd.print("/");
+      lcd.print(PO),1);
+      lcd.setCursor(0,1);
+      lcd.print("Umidade: ");
+      lcd.print(RU,1);
+      lcd.print("%");
       sim_nao = 1;
     }
   }
-  if ( millis() - time_inicio > 4000 && millis() - time_inicio <= 8000){
+  else if ( millis() - time_inicio > 4000 && millis() - time_inicio <= 8000){
     if (sim_nao == 1){
-      LCD("Data: "+String(data_hora.day())+"/"+String(data_hora.month())+"/"+String(data_hora.year()), String(data_hora.hour())+":"+String(data_hora.minute())+"    Umid: "+String(liga_desliga));
+      lcd.clear();
+      lcd.setCursor(0,0);
+      lcd.print("Data: ");
+      lcd.print(data_hora.day());
+      lcd.print("/");
+      lcd.print(data_hora.month());
+      lcd.print("/");
+      lcd.print(data_hora.year());
+      lcd.setCursor(0,1);
+      lcd.print(data_hora.hour());
+      lcd.print(":");
+      lcd.print(data_hora.minute());
+      lcd.print("    Umid: ");
+      lcd.print(liga_desliga);
       sim_nao = 0;
     }
   }
-  if (millis() - time_inicio > 8000){
+  else if (millis() - time_inicio > 8000){
     time_inicio = millis();
 
   }
 
 
-  if ( millis() - time_inicio_gravacao > start*60000 ||dados_serial == 'S' ){ // 5 min = 300000
-    UMD(Temp.getTempCByIndex(0),PSIC(Temp.getTempCByIndex(0), Temp.getTempCByIndex(1), 101.325),dewPoint(Temp.getTempCByIndex(0),PSIC(Temp.getTempCByIndex(0), Temp.getTempCByIndex(1), 101.325)));
+  if ( millis() - time_inicio_gravacao > start*60000 ||dados_serial == 'S' ){ // 1 min = 60000
+    UMD(Temp.getTempCByIndex(0),RU,PO);
     time_inicio_gravacao = millis();
     start = 5;
-  
-  if (SD.begin()) {
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("Gravando");
+    lcd.setCursor(0,0);
+    lcd.print("Arquivo");
+
+    if (SD.begin()) {
       Serial.println("SD Card pronto para uso."); 
     }
     else {
@@ -137,19 +169,37 @@ void loop()
     } 
     File myFile = SD.open("estufa.txt", FILE_WRITE); 
     if (myFile) { 
-      myFile.println(String(data_hora.day())+"/"+String(data_hora.month())+"/"+String(data_hora.year())+";"+
-             String(data_hora.hour())+":"+String(data_hora.minute())+":"+String(data_hora.second())+";"+
-             String(PSIC(Temp.getTempCByIndex(0), Temp.getTempCByIndex(1), 101.325),2)+";"+ String(Temp.getTempCByIndex(0),2)+";"+ String(Temp.getTempCByIndex(1),2)+";"+String(dewPoint(Temp.getTempCByIndex(0),PSIC(Temp.getTempCByIndex(0), Temp.getTempCByIndex(1), 101.325)),2)+";"+String(liga_desliga)); 
+      myFile.print(data_hora.day());
+      myFile.print("/");
+      myFile.print(data_hora.month());
+      myFile.print("/");
+      myFile.print(data_hora.year());
+      myFile.print(";");
+      myFile.print(data_hora.hour());
+      myFile.print(":");
+      myFile.print(data_hora.minute());
+      myFile.print(":");
+      myFile.print(data_hora.second());
+      myFile.print(";");
+      myFile.print(RU,2);
+      myFile.print(";");
+      myFile.print(Temp.getTempCByIndex(0),2);
+      myFile.print(";");
+      myFile.print(Temp.getTempCByIndex(1),2);
+      myFile.print(";");
+      myFile.print(PO,2);
+      myFile.print(";");
+      myFile.println(liga_desliga);
       Serial.println("Salvando dados");
       
     }
     else {     
       Serial.println("Erro ao Abrir Arquivo .txt");
     }
-    myFile.close();
-    
-
-             
+    myFile.close(); 
+    delay(5000);
+    time_inicio = millis();
+    sim_nao = 0;            
   }
 
   if (dados_serial != -1 && dados_serial != 10){
@@ -167,16 +217,11 @@ void loop()
         break;
 
       case 'S':
-        //Serial.println("Salvando");
-        //escrever(data);
-        //escrever(hora);
-       // escrever(String(RU,1)+";"+ String(Temp.getTempCByIndex(0),1)+";"+ String(Temp.getTempCByIndex(1),1)+";"+String(PO,1));
+        
         break;
 
       default:
         Serial.println("Comando Inválido");
-        // LCD("Comando","Invalido");
-        // delay(3000);
         break;
     }
   }
@@ -211,14 +256,14 @@ void UMD(float TEMP, float RU, float PO){
 }
 
 
-// Printar no LCD os dados
+/* // Printar no LCD os dados
 void LCD (String Primeira, String Segunda){
   lcd.clear();
   lcd.setCursor(0,0);
   lcd.print(Primeira);
   lcd.setCursor(0,1);
   lcd.print(Segunda); 
-}
+} */
 
 /*
 void escrever(String texto){
