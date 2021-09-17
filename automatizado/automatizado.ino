@@ -21,6 +21,17 @@
  * https://www.usinainfo.com.br/blog/projeto-arduino-sd-card-leitura-e-escrita-de-dados-no-cartao-micro-sd/
  * https://blogmasterwalkershop.com.br/arduino/como-usar-com-arduino-modulo-bluetooth-hc-05-hc-06
  * https://www.filipeflop.com/blog/tutorial-modulo-bluetooth-com-arduino/
+ * 
+ * 
+ *    p é o ponteiro então *p é o valor guardado no endereço
+ *    x é uma variável então &x é o endereço da variável
+ *    
+ *    int x = 5;
+ *    int *p; // declarando ponteiro
+ *    p = &x; // pasando o endereço do x para o ponteiro
+ *    resultado = *p; // passando o valor do endereço salvo no ponteiro p
+ *    Serial.print(resultado); // será mostrado o valor 5
+ *   
  */
  
 #include "temperature.h"            //Inclusão de biblioteca: Para o calculo do Ponto de orvalho. 
@@ -39,7 +50,7 @@ LiquidCrystal_I2C lcd(0x27,16,2); //Inicializa o display no endereco 0x27
 RTC_DS1307 rtc; //OBJETO DO TIPO RTC_DS1307 Para Relógio
 
 int RU_MAX = 95; // Umidade Relativa máxima de trabalho
-int sim_nao = 0;
+bool sim_nao = 0;
 char liga_desliga = 'L';
 int start = 20; //minutos
 unsigned long time_inicio;
@@ -94,6 +105,9 @@ void loop()
 {
   int dados_serial = Serial.read();
   DateTime data_hora = rtc.now();
+
+
+
 /*   float RU;
   float PO;
   do{
@@ -132,7 +146,7 @@ void loop()
   
 
   if ( millis() - time_inicio >= 0 && millis() - time_inicio <= 4000){
-    if (sim_nao == 0){
+    if (sim_nao){
       lcd.clear();
       lcd.setCursor(0,0);
       lcd.print("T/PO");
@@ -149,7 +163,7 @@ void loop()
     }
   }
   else if ( millis() - time_inicio > 4000 && millis() - time_inicio <= 8000){
-    if (sim_nao == 1){
+    if (sim_nao){
       lcd.clear();
       lcd.setCursor(0,0);
       lcd.print("Data: ");
