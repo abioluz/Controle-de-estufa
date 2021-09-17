@@ -94,7 +94,7 @@ void loop()
 {
   int dados_serial = Serial.read();
   DateTime data_hora = rtc.now();
-  float RU;
+/*   float RU;
   float PO;
   do{
     Temp.requestTemperatures();
@@ -105,9 +105,30 @@ void loop()
            isnan(Temp.getTempCByIndex(1)) || Temp.getTempCByIndex(1) < -10 || Temp.getTempCByIndex(1) > 60 ||
            isnan(RU) ||  RU < 0 || RU > 150 ||
            isnan(PO) 
-          );
+          ); */
   
-  
+  float RU;
+  float PO;
+  float temp_s_0 = 0;
+  float temp_u_1 = 0;
+  for (int i = 0; i < 5; i++){
+
+    do{
+      Temp.requestTemperatures();
+
+    } while (isnan(Temp.getTempCByIndex(0)) || Temp.getTempCByIndex(0) < -10 || Temp.getTempCByIndex(0) > 60 ||
+            isnan(Temp.getTempCByIndex(1)) || Temp.getTempCByIndex(1) < -10 || Temp.getTempCByIndex(1) > 60 
+            );
+
+    temp_s_0 += Temp.getTempCByIndex(0);
+    temp_u_1 += Temp.getTempCByIndex(1);
+
+  }
+  temp_s_0 /= 5;
+  temp_u_1 /= 5; 
+
+  RU = PSIC(temp_s_0, temp_u_1, 101.325);
+  PO = dewPoint(temp_s_0,RU);
   
 
   if ( millis() - time_inicio >= 0 && millis() - time_inicio <= 4000){
@@ -117,7 +138,7 @@ void loop()
       lcd.print("T/PO");
       lcd.print((char)223);
       lcd.print("C:");
-      lcd.print(Temp.getTempCByIndex(0),1);
+      lcd.print(temp_s_0,1);
       lcd.print("/");
       lcd.print(PO,1);
       lcd.setCursor(0,1);
@@ -185,9 +206,9 @@ void loop()
       myFile.print(";");
       myFile.print(RU,2);
       myFile.print(";");
-      myFile.print(Temp.getTempCByIndex(0),2);
+      myFile.print(temp_s_0,2);
       myFile.print(";");
-      myFile.print(Temp.getTempCByIndex(1),2);
+      myFile.print(temp_u_1,2);
       myFile.print(";");
       myFile.print(PO,2);
       myFile.print(";");
