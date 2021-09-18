@@ -17,11 +17,19 @@
  * by Rob Tillaart Versão 1.0.0
  * 
  * 
- * 
+ * REFERENCIAS:
  * https://www.usinainfo.com.br/blog/projeto-arduino-sd-card-leitura-e-escrita-de-dados-no-cartao-micro-sd/
  * https://blogmasterwalkershop.com.br/arduino/como-usar-com-arduino-modulo-bluetooth-hc-05-hc-06
  * https://www.filipeflop.com/blog/tutorial-modulo-bluetooth-com-arduino/
+ * https://www.arduinoportugal.pt/usar-memoria-eeprom-arduino/
+ * https://www.paulotrentin.com.br/programacao/dicas/lendo-uma-string-com-arduino-via-serial/
  * 
+ *    
+ * >>>COLINHA:
+ * 
+ *    EEPROM.length(); //Retorna o tamanho da EEPROM
+ *    EEPROM.write(endereço_bytes, valor_bytes);
+ *    byte valor = EEPROM.read(endereço_bytes);
  * 
  *    p é o ponteiro então *p é o valor guardado no endereço
  *    x é uma variável então &x é o endereço da variável
@@ -40,7 +48,8 @@
 #include <OneWire.h>                //Inclusão de biblioteca: Para poder usar os sensores de temperatura DS18B20.
 #include <DallasTemperature.h>      //Inclusão de biblioteca: Para poder usar os sensores de temperatura DS18B20.
 #include <SD.h>                     //Inclusão de biblioteca: Para usar o microSSD.
-#include <SPI.h>                    //Inclusão de biblioteca: Para usar o microSSD.       
+#include <SPI.h>                    //Inclusão de biblioteca: Para usar o microSSD.   
+#include <EEPROM.h>     
 
 
 OneWire oneWire(4); // Termometro no pino quatro
@@ -49,14 +58,17 @@ DeviceAddress insideThermometer;
 LiquidCrystal_I2C lcd(0x27,16,2); //Inicializa o display no endereco 0x27
 RTC_DS1307 rtc; //OBJETO DO TIPO RTC_DS1307 Para Relógio
 
-const PROGMEM byte RU_MAX = 92; // Umidade Relativa máxima de trabalho
+// const PROGMEM byte endereco = 0;
+// byte RU_MAX = EEPROM.read(0) // Umidade Relativa máxima de trabalho
 bool sim_nao = 0;
 char liga_desliga = 'L';
 int start = 20; //minutos
 unsigned long time_inicio;
 int controle = 0;
-// unsigned long time_inicio_gravacao;
-// unsigned long time_fim;
+int TsTuRuPo[4] = {0,0,0,0};
+
+
+////////////// FUNÇÔES //////////////
 
 // Psicrometro usando dois termometros
 float PSIC(float Ts, float Tu, float P, char Tipo='N'){ 
@@ -74,278 +86,43 @@ float PSIC(float Ts, float Tu, float P, char Tipo='N'){
   return UR;
 }
 
-
-void setup()
-{
-  // Inicializando 
-  Serial.begin(9600); //INICIALIZA A SERIAL
-  Temp.begin(); // Sensor de temperatura
-  Temp.setResolution(insideThermometer, 9);
-  pinMode(10, OUTPUT); 
-  pinMode(8, OUTPUT);  // Porta do relé
-  digitalWrite(8, HIGH); // Ativando relé
-  lcd.init();
-  lcd.setBacklight(HIGH);
-  lcd.clear();
+String ler_serial(){
+  String texto = "";
+  char leitura_serial;
   
-
-  if (! rtc.begin()) { 
-    Serial.println("DS1307 não encontrado"); 
-    //while(1); 
+  while(Serial.available() > 0) {
+    leitura_serial = Serial.read();
+    if (leitura_serial != '\n'){
+      texto.concat(leitura_serial);
+    }
+    delay(10);
   }
-  if (rtc.isrunning()) { 
-    Serial.println("DS1307 rodando!");
-    // rtc.adjust(DateTime(F(__DATE__), F(__TIME__))); //CAPTURA A DATA E HORA EM QUE O SKETCH É COMPILADO
-    // rtc.adjust(DateTime(2018, 7, 5, 1, 1, 1)); //(ANO), (MÊS), (DIA), (HORA), (MINUTOS), (SEGUNDOS)
-  }
+  return texto;
 }
 
- 
-void loop()
-{
-  int dados_serial = Serial.read();
- 
-  if (millis() <= 10000){
-    
-    DateTime data_hora = rtc.now();
+void ler_TsTuRuPo(int n=1){
+  TsTuRuPo[0] = 0;
+  TsTuRuPo[1] = 0;
 
-    if (SD.begin()) {
-      Serial.println("SD Card pronto para uso."); 
-    }
-    else {
-      Serial.println("Falha na inicialização do SD Card.");
-      return;
-    } 
-    File myFile = SD.open("estufa.txt", FILE_WRITE); 
-    if (myFile) { 
-      myFile.print(data_hora.day());
-      myFile.print("/");
-      myFile.print(data_hora.month());
-      myFile.print("/");
-      myFile.print(data_hora.year());
-      myFile.print(";");
-      myFile.print(data_hora.hour());
-      myFile.print(":");
-      myFile.print(data_hora.minute());
-      myFile.print(":");
-      myFile.print(data_hora.second());
-      myFile.println(";NAN;NAN;NAN;NAN;START");
-      Serial.println("Salvando dados");
-    }
-    else {     
-      Serial.println("Erro ao Abrir Arquivo .txt");
-    }
-    myFile.close(); 
-
-    lcd.clear();
-    lcd.setCursor(0,0);
-    lcd.print("INICIALIZANDO!");
-    lcd.setCursor(0,1);
-    for (byte i=0; i < 16; i++){
-      lcd.print(".");
-      delay(500);
-    }
-
-    time_inicio = millis();
-  }
-
-
-/*   float RU;
-  float PO;
-  do{
-    Temp.requestTemperatures();
-     RU = PSIC(Temp.getTempCByIndex(0), Temp.getTempCByIndex(1), 101.325);
-     PO = dewPoint(Temp.getTempCByIndex(0),RU);
-
-  } while (isnan(Temp.getTempCByIndex(0)) || Temp.getTempCByIndex(0) < -10 || Temp.getTempCByIndex(0) > 60 ||
-           isnan(Temp.getTempCByIndex(1)) || Temp.getTempCByIndex(1) < -10 || Temp.getTempCByIndex(1) > 60 ||
-           isnan(RU) ||  RU < 0 || RU > 150 ||
-           isnan(PO) 
-          ); */
-  
-/* 
- do{
-    Temp.requestTemperatures();
-    Serial.println("lendo temperatura");
-    Serial.println(Temp.getTempCByIndex(0));
-    Serial.println( Temp.getTempCByIndex(1)); 
-    RU = PSIC(Temp.getTempCByIndex(0), Temp.getTempCByIndex(1), 101.325);
-    PO = dewPoint(Temp.getTempCByIndex(0),RU);
-    
-  } while (Temp.getTempCByIndex(0) < -10 ||// Temp.getTempCByIndex(0) > 60 ||
-           Temp.getTempCByIndex(1) < -10 || // Temp.getTempCByIndex(1) > 60 ||
-           isnan(RU) || RU < 0 || RU > 200 ||
-           isnan(PO)
-          ); */
-
-  // Serial.println("umidade e temp: ");
-  // Serial.println(RU);
-  // Serial.println(PO);
-  // Serial.println(temp_s_0);
-  // Serial.println(temp_u_1);
-
-  if ( millis() - time_inicio >= 0 && millis() - time_inicio <= 7000){
-    if (! sim_nao){
-
-    float RU;
-    float PO;
-    float temp_s_0 = 0;
-    float temp_u_1 = 0;
-      
+  for (int i = 0; i < n; i++){
     do{
       Temp.requestTemperatures();    
-      temp_s_0 = Temp.getTempCByIndex(0);
-      temp_u_1 = Temp.getTempCByIndex(1);
-      RU = PSIC(temp_s_0, temp_u_1, 101.325);
-      PO = dewPoint(temp_s_0,RU);
     } while (isnan(Temp.getTempCByIndex(0)) || Temp.getTempCByIndex(0) < -10 || Temp.getTempCByIndex(0) > 60 ||
-             isnan(Temp.getTempCByIndex(1)) || Temp.getTempCByIndex(1) < -10 || Temp.getTempCByIndex(1) > 60 ||
-             isnan(RU) || RU < 0 || RU > 200 ||
-             isnan(PO)
-            );
-
-      lcd.clear();
-      lcd.setCursor(0,0);
-      lcd.print("T/PO");
-      lcd.print((char)223);
-      lcd.print("C:");
-      lcd.print(temp_s_0,1);
-      lcd.print("/");
-      lcd.print(PO,1);
-      lcd.setCursor(0,1);
-      lcd.print("Umidade: ");
-      lcd.print(RU,1);
-      lcd.print("%");
-      sim_nao = 1;
-    }
+            isnan(Temp.getTempCByIndex(1)) || Temp.getTempCByIndex(1) < -10 || Temp.getTempCByIndex(1) > 60 
+          );
+    TsTuRuPo[0] += Temp.getTempCByIndex(0);
+    TsTuRuPo[1] += Temp.getTempCByIndex(1);
+    delay(500);
   }
-  else if ( millis() - time_inicio > 7000 && millis() - time_inicio <= 10000){
-    if (sim_nao){
-      DateTime data_hora = rtc.now();
+  TsTuRuPo[0] /= n;
+  TsTuRuPo[1] /= n; 
+  do{
+    TsTuRuPo[2] = PSIC(TsTuRuPo[0], TsTuRuPo[1], 101.325);
+    TsTuRuPo[3] = dewPoint(TsTuRuPo[0],TsTuRuPo[2]);
+  } while(isnan(TsTuRuPo[2]) || TsTuRuPo[2] < 0 || TsTuRuPo[2] > 200 ||
+          isnan(TsTuRuPo[3])
+          );
 
-      lcd.clear();
-      lcd.setCursor(0,0);
-      lcd.print("Data: ");
-      lcd.print(data_hora.day());
-      lcd.print("/");
-      lcd.print(data_hora.month());
-      lcd.print("/");
-      lcd.print(data_hora.year());
-      lcd.setCursor(0,1);
-      lcd.print(data_hora.hour());
-      lcd.print(":");
-      lcd.print(data_hora.minute());
-      lcd.print("    Umid: ");
-      lcd.print(liga_desliga);
-      sim_nao = 0;
-    }
-  }
-  else if (millis() - time_inicio > 10000){
-    time_inicio = millis();
-    controle +=1;
-
-  }
-
-
-  if ( controle > start*60 ||dados_serial == 'S' ){ // 1 min = 60000
-    time_inicio = millis();
-    sim_nao = 0;            
-    start = 5;
-    controle  = 0;
-    lcd.clear();
-    lcd.setCursor(0,0);
-    lcd.print("Gravando");
-    lcd.setCursor(0,1);
-    lcd.print("Arquivo");
-
-    float RU;
-    float PO;
-    float temp_s_0 = 0;
-    float temp_u_1 = 0;
-    byte n = 20;
-    for (int i = 0; i < n; i++){
-      do{
-        Temp.requestTemperatures();    
-      } while (isnan(Temp.getTempCByIndex(0)) || Temp.getTempCByIndex(0) < -10 || Temp.getTempCByIndex(0) > 60 ||
-             isnan(Temp.getTempCByIndex(1)) || Temp.getTempCByIndex(1) < -10 || Temp.getTempCByIndex(1) > 60 
-            );
-      temp_s_0 += Temp.getTempCByIndex(0);
-      temp_u_1 += Temp.getTempCByIndex(1);
-    }
-    temp_s_0 /= n;
-    temp_u_1 /= n; 
-    do{
-      RU = PSIC(temp_s_0, temp_u_1, 101.325);
-      PO = dewPoint(temp_s_0,RU);
-    } while(isnan(RU) || RU < 0 || RU > 200 ||
-            isnan(PO));
-    DateTime data_hora = rtc.now();
-
-    UMD(temp_s_0,RU,PO);
-
-    if (SD.begin()) {
-      Serial.println("SD Card pronto para uso."); 
-    }
-    else {
-      Serial.println("Falha na inicialização do SD Card.");
-      return;
-    } 
-    File myFile = SD.open("estufa.txt", FILE_WRITE); 
-    if (myFile) { 
-      myFile.print(data_hora.day());
-      myFile.print("/");
-      myFile.print(data_hora.month());
-      myFile.print("/");
-      myFile.print(data_hora.year());
-      myFile.print(";");
-      myFile.print(data_hora.hour());
-      myFile.print(":");
-      myFile.print(data_hora.minute());
-      myFile.print(":");
-      myFile.print(data_hora.second());
-      myFile.print(";");
-      myFile.print(RU,2);
-      myFile.print(";");
-      myFile.print(temp_s_0,2);
-      myFile.print(";");
-      myFile.print(temp_u_1,2);
-      myFile.print(";");
-      myFile.print(PO,2);
-      myFile.print(";");
-      myFile.println(liga_desliga);
-      Serial.println("Salvando dados");
-    }
-    else {     
-      Serial.println("Erro ao Abrir Arquivo .txt");
-    }
-    myFile.close(); 
-    //delay(5000);
-  }
-
-  if (dados_serial != -1 && dados_serial != 10){
-    Serial.println(dados_serial);
-    switch (dados_serial){
-
-      case 'L':
-        Serial.println("Lendo Arquivo");
-        ler();
-        break;
-
-      case 'A':
-        Serial.println("Apagando");
-        apagar();
-        break;
-
-      case 'S':
-        
-        break;
-
-      default:
-        Serial.println("Comando Inválido");
-        break;
-    }
-  }
-  
 }
 
 void UMD(float TEMP, float RU, float PO){
@@ -357,7 +134,7 @@ void UMD(float TEMP, float RU, float PO){
     }
   }
   else{
-    if (RU <= RU_MAX){
+    if (RU <= EEPROM.read(0)){
       Serial.println("Liga");
       digitalWrite(8, HIGH);
       if (liga_desliga != 'L'){
@@ -374,39 +151,6 @@ void UMD(float TEMP, float RU, float PO){
     }
   }
 }
-
-
-/* // Printar no LCD os dados
-void LCD (String Primeira, String Segunda){
-  lcd.clear();
-  lcd.setCursor(0,0);
-  lcd.print(Primeira);
-  lcd.setCursor(0,1);
-  lcd.print(Segunda); 
-} */
-
-/*
-void escrever(String texto){
-  
-  if (SD.begin()) {
-    Serial.println("SD Card pronto para uso."); 
-  }
-  else {
-    Serial.println("Falha na inicialização do SD Card.");
-    return;
-  } 
-  File myFile = SD.open("estufa.txt", FILE_WRITE); 
-  if (myFile) { 
-    myFile.println(texto); 
-    Serial.println("Salvando dados");
-    Serial.println(texto);
-  }
-  else {     
-    Serial.println("Erro ao Abrir Arquivo .txt");
-  }
-  myFile.close();
-}
-*/
 
 void ler(){
   if (SD.begin()) {
@@ -448,5 +192,264 @@ void apagar(){
 
 }
 
+void set_RU(){
+  if (EEPROM.read(0) == 0 || EEPROM.read(0) > 100){
+    EEPROM.write(0, 94); 
+  }
+}
 
+void inicio(){
+
+  DateTime data_hora = rtc.now();
+
+    if (SD.begin()) {
+      Serial.println("SD Card pronto para uso."); 
+    }
+    else {
+      Serial.println("Falha na inicialização do SD Card.");
+      return;
+    } 
+    File myFile = SD.open("estufa.txt", FILE_WRITE); 
+    if (myFile) { 
+      myFile.print(data_hora.day());
+      myFile.print("/");
+      myFile.print(data_hora.month());
+      myFile.print("/");
+      myFile.print(data_hora.year());
+      myFile.print(";");
+      myFile.print(data_hora.hour());
+      myFile.print(":");
+      myFile.print(data_hora.minute());
+      myFile.print(":");
+      myFile.print(data_hora.second());
+      myFile.println(";NAN;NAN;NAN;NAN;START");
+      Serial.println("Salvando dados");
+    }
+    else {     
+      Serial.println("Erro ao Abrir Arquivo .txt");
+    }
+    myFile.close(); 
+
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("INICIALIZANDO!");
+    lcd.setCursor(0,1);
+    for (byte i=0; i < 16; i++){
+      lcd.print(".");
+      delay(500);
+    }
+
+    time_inicio = millis();
+}
+
+void ler_temp(int n=1){
+  ler_TsTuRuPo(n);
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("T/PO");
+  lcd.print((char)223);
+  lcd.print("C:");
+  lcd.print(TsTuRuPo[0],1);
+  lcd.print("/");
+  lcd.print(TsTuRuPo[3],1);
+  lcd.setCursor(0,1);
+  lcd.print("Umidade: ");
+  lcd.print(TsTuRuPo[2],1);
+  lcd.print("%");
+}
+
+void ler_DataHora(){
+DateTime data_hora = rtc.now();
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("Data: ");
+  lcd.print(data_hora.day());
+  lcd.print("/");
+  lcd.print(data_hora.month());
+  lcd.print("/");
+  lcd.print(data_hora.year());
+  lcd.setCursor(0,1);
+  lcd.print(data_hora.hour());
+  lcd.print(":");
+  lcd.print(data_hora.minute());
+  lcd.print("    Umid: ");
+  lcd.print(liga_desliga);
+}
+
+void salvar(){
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("Gravando");
+  lcd.setCursor(0,1);
+  lcd.print("Arquivo");
   
+  ler_TsTuRuPo(20);
+
+  DateTime data_hora = rtc.now();
+
+  UMD(TsTuRuPo[0],TsTuRuPo[2],TsTuRuPo[3]);
+
+  if (SD.begin()) {
+    Serial.println("SD Card pronto para uso."); 
+  }
+  else {
+    Serial.println("Falha na inicialização do SD Card.");
+    return;
+  } 
+  File myFile = SD.open("estufa.txt", FILE_WRITE); 
+  if (myFile) { 
+    myFile.print(data_hora.day());
+    myFile.print("/");
+    myFile.print(data_hora.month());
+    myFile.print("/");
+    myFile.print(data_hora.year());
+    myFile.print(";");
+    myFile.print(data_hora.hour());
+    myFile.print(":");
+    myFile.print(data_hora.minute());
+    myFile.print(":");
+    myFile.print(data_hora.second());
+    myFile.print(";");
+    myFile.print(TsTuRuPo[2],2);
+    myFile.print(";");
+    myFile.print(TsTuRuPo[0],2);
+    myFile.print(";");
+    myFile.print(TsTuRuPo[1],2);
+    myFile.print(";");
+    myFile.print(TsTuRuPo[3],2);
+    myFile.print(";");
+    myFile.println(liga_desliga);
+    Serial.println("Salvando dados");
+  }
+  else {     
+    Serial.println("Erro ao Abrir Arquivo .txt");
+  }
+  myFile.close(); 
+}
+
+void escolha_serial(String dados_serial){
+  if (dados_serial == "LER"){
+    Serial.println("Lendo Arquivo");
+    ler();
+  }
+  else if (dados_serial == "APAGAR"){
+    Serial.println("Apagando");
+    apagar();
+  }
+  else if (dados_serial == "SALVAR"){
+    salvar();
+  }
+  else if (dados_serial == "TEMP"){
+    for (int i = 0; i < 30; i++){
+      ler_temp(10);
+      delay(1000);
+    }
+  }
+  else if (dados_serial == "DATA"){
+    for (int i = 0; i < 30; i++){
+      ler_DataHora();
+      delay(1000);
+    }
+  }
+  else if (dados_serial == "SET_RU_MAX"){
+    Serial.print("RU_MAX atual: ");
+    Serial.println(EEPROM.read(0));
+    Serial.println("Digite a Umidade máxima de trabalho.");
+    Serial.println("Valores iguais a 0 e maiores a 100 serão convertidos para 94");
+    do {
+      dados_serial = ler_serial();
+    }
+    while (dados_serial == "");
+
+    EEPROM.write(0, dados_serial.toInt());
+    set_RU();
+    Serial.print("RU_MAX atualizado: ");
+    Serial.println(EEPROM.read(0));
+  }
+  else if (dados_serial == "RU_MAX"){
+    Serial.print("RU_MAX: ");
+    Serial.println(EEPROM.read(0));
+  }
+  else if (dados_serial == "HELP"){
+    Serial.println("LER: Para ler os dados salvos no microSD e mostra no serial.");
+    Serial.println("APAGAR: Apaga todos os dados salvos no microSD.");
+    Serial.println("SALVAR: Salva os dados no microSD.");
+    Serial.println("TEMP: Lê a PO, umidade e a média de 15 temperaturas, mostrando no LCD por no minimo 30 segundos.");
+    Serial.println("DATA: Lê a data e hora e se os umidificadores estão ligados, mostrando no LCD por no minimo 30 segundos.");
+    Serial.println("SET_RU_MAX: Para setar a umidade máxima de trabalho com valores entre 1 a 100. Valores fora deste intervalo serão setados como 94%.");
+    Serial.println("RU_MAX: Mostra no serial o valor da umidade máxima de trabalho.");
+  }
+  else {
+    Serial.println("Comando Inválido");
+    Serial.println("Digite HELP para mais informações \n");
+  }
+}
+
+
+////////////// PROGRAMA //////////////
+
+
+void setup()
+{
+  // Inicializando 
+  Serial.begin(9600); //INICIALIZA A SERIAL
+  Temp.begin(); // Sensor de temperatura
+  Temp.setResolution(insideThermometer, 9);
+  pinMode(10, OUTPUT); 
+  pinMode(8, OUTPUT);  // Porta do relé
+  digitalWrite(8, HIGH); // Ativando relé
+  lcd.init();
+  lcd.setBacklight(HIGH);
+  lcd.clear();
+  set_RU();
+  inicio();
+
+  if (! rtc.begin()) { 
+    Serial.println("DS1307 não encontrado"); 
+    //while(1); 
+  }
+  if (rtc.isrunning()) { 
+    Serial.println("DS1307 rodando!");
+    // rtc.adjust(DateTime(F(__DATE__), F(__TIME__))); //CAPTURA A DATA E HORA EM QUE O SKETCH É COMPILADO
+    // rtc.adjust(DateTime(2018, 7, 5, 1, 1, 1)); //(ANO), (MÊS), (DIA), (HORA), (MINUTOS), (SEGUNDOS)
+  }
+  
+}
+ 
+void loop()
+{
+  
+  if(Serial.available() > 0){ 
+    escolha_serial(ler_serial());//Serial.read();
+    time_inicio = millis();
+    sim_nao = 0;
+  }
+  else {
+    if ( millis() - time_inicio >= 0 && millis() - time_inicio <= 7000){
+      if (! sim_nao){
+        ler_temp();
+        sim_nao = 1;
+      }
+    }
+    else if ( millis() - time_inicio > 7000 && millis() - time_inicio <= 10000){
+      if (sim_nao){
+        ler_DataHora();
+        sim_nao = 0;
+      }
+    }
+    else if (millis() - time_inicio > 10000){
+      time_inicio = millis();
+      controle +=1;
+
+    }
+
+    if ( controle > start*60){ // 1 min = 60000
+      salvar();
+      //delay(5000);
+      sim_nao = 0;            
+      start = 5;
+      controle  = 0;
+      time_inicio = millis();
+    }
+  }
+}
