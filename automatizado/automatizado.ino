@@ -49,7 +49,7 @@
 #include <DallasTemperature.h>      //Inclusão de biblioteca: Para poder usar os sensores de temperatura DS18B20.
 #include <SD.h>                     //Inclusão de biblioteca: Para usar o microSSD.
 #include <SPI.h>                    //Inclusão de biblioteca: Para usar o microSSD.   
-#include <EEPROM.h>     
+// #include <EEPROM.h>     
 
 
 OneWire oneWire(4); // Termometro no pino quatro
@@ -59,13 +59,13 @@ LiquidCrystal_I2C lcd(0x27,16,2); //Inicializa o display no endereco 0x27
 RTC_DS1307 rtc; //OBJETO DO TIPO RTC_DS1307 Para Relógio
 
 // const PROGMEM byte endereco = 0;
-// byte RU_MAX = EEPROM.read(0) // Umidade Relativa máxima de trabalho
+byte RU_MAX = 94; // RU_MAX; // Umidade Relativa máxima de trabalho
 bool sim_nao = 0;
 char liga_desliga = 'L';
 int start = 20; //minutos
 unsigned long time_inicio;
 int controle = 0;
-int TsTuRuPo[4] = {0,0,0,0};
+// float TsTuRuPo[4] = {0,0,0,0};
 
 
 ////////////// FUNÇÔES //////////////
@@ -100,9 +100,26 @@ String ler_serial(){
   return texto;
 }
 
-void ler_TsTuRuPo(int n=1){
-  TsTuRuPo[0] = 0;
-  TsTuRuPo[1] = 0;
+void ler_temp(int n=1){
+
+  int *TsTuRuPo = ler_TsTuRuPo(n);
+  
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("T/PO");
+  lcd.print((char)223);
+  lcd.print("C:");
+  lcd.print(TsTuRuPo[0],1);
+  lcd.print("/");
+  lcd.print(TsTuRuPo[3],1);
+  lcd.setCursor(0,1);
+  lcd.print("Umidade: ");
+  lcd.print(TsTuRuPo[2],1);
+  lcd.print("%");
+}
+
+float *ler_TsTuRuPo(int n=1){
+  float TsTuRuPo = {0,0,0,0};
 
   for (int i = 0; i < n; i++){
     do{
@@ -122,7 +139,7 @@ void ler_TsTuRuPo(int n=1){
   } while(isnan(TsTuRuPo[2]) || TsTuRuPo[2] < 0 || TsTuRuPo[2] > 200 ||
           isnan(TsTuRuPo[3])
           );
-
+return TsTuRuPo;
 }
 
 void UMD(float TEMP, float RU, float PO){
@@ -134,7 +151,7 @@ void UMD(float TEMP, float RU, float PO){
     }
   }
   else{
-    if (RU <= EEPROM.read(0)){
+    if (RU <= RU_MAX){
       Serial.println("Liga");
       digitalWrite(8, HIGH);
       if (liga_desliga != 'L'){
@@ -192,11 +209,11 @@ void apagar(){
 
 }
 
-void set_RU(){
-  if (EEPROM.read(0) == 0 || EEPROM.read(0) > 100){
+/* void set_RU(){
+  if (RU_MAX == 0 || RU_MAX > 100){
     EEPROM.write(0, 94); 
   }
-}
+} */
 
 void inicio(){
 
@@ -242,22 +259,6 @@ void inicio(){
     time_inicio = millis();
 }
 
-void ler_temp(int n=1){
-  ler_TsTuRuPo(n);
-  lcd.clear();
-  lcd.setCursor(0,0);
-  lcd.print("T/PO");
-  lcd.print((char)223);
-  lcd.print("C:");
-  lcd.print(TsTuRuPo[0],1);
-  lcd.print("/");
-  lcd.print(TsTuRuPo[3],1);
-  lcd.setCursor(0,1);
-  lcd.print("Umidade: ");
-  lcd.print(TsTuRuPo[2],1);
-  lcd.print("%");
-}
-
 void ler_DataHora(){
 DateTime data_hora = rtc.now();
   lcd.clear();
@@ -283,7 +284,7 @@ void salvar(){
   lcd.setCursor(0,1);
   lcd.print("Arquivo");
   
-  ler_TsTuRuPo(20);
+  float *TsTuRuPo = ler_TsTuRuPo(20);
 
   DateTime data_hora = rtc.now();
 
@@ -340,6 +341,7 @@ void escolha_serial(String dados_serial){
     salvar();
   }
   else if (dados_serial == "TEMP"){
+    
     for (int i = 0; i < 30; i++){
       ler_temp(10);
       delay(1000);
@@ -351,9 +353,9 @@ void escolha_serial(String dados_serial){
       delay(1000);
     }
   }
-  else if (dados_serial == "SET_RU_MAX"){
+  /* else if (dados_serial == "SET_RU_MAX"){
     Serial.print("RU_MAX atual: ");
-    Serial.println(EEPROM.read(0));
+    Serial.println(RU_MAX);
     Serial.println("Digite a Umidade máxima de trabalho.");
     Serial.println("Valores iguais a 0 e maiores a 100 serão convertidos para 94");
     do {
@@ -364,11 +366,11 @@ void escolha_serial(String dados_serial){
     EEPROM.write(0, dados_serial.toInt());
     set_RU();
     Serial.print("RU_MAX atualizado: ");
-    Serial.println(EEPROM.read(0));
-  }
+    Serial.println(RU_MAX);
+  } */
   else if (dados_serial == "RU_MAX"){
     Serial.print("RU_MAX: ");
-    Serial.println(EEPROM.read(0));
+    Serial.println(RU_MAX);
   }
   else if (dados_serial == "HELP"){
     Serial.println("LER: Para ler os dados salvos no microSD e mostra no serial.");
@@ -376,7 +378,7 @@ void escolha_serial(String dados_serial){
     Serial.println("SALVAR: Salva os dados no microSD.");
     Serial.println("TEMP: Lê a PO, umidade e a média de 15 temperaturas, mostrando no LCD por no minimo 30 segundos.");
     Serial.println("DATA: Lê a data e hora e se os umidificadores estão ligados, mostrando no LCD por no minimo 30 segundos.");
-    Serial.println("SET_RU_MAX: Para setar a umidade máxima de trabalho com valores entre 1 a 100. Valores fora deste intervalo serão setados como 94%.");
+    // Serial.println("SET_RU_MAX: Para setar a umidade máxima de trabalho com valores entre 1 a 100. Valores fora deste intervalo serão setados como 94%.");
     Serial.println("RU_MAX: Mostra no serial o valor da umidade máxima de trabalho.");
   }
   else {
@@ -401,7 +403,7 @@ void setup()
   lcd.init();
   lcd.setBacklight(HIGH);
   lcd.clear();
-  set_RU();
+  // set_RU();
   inicio();
 
   if (! rtc.begin()) { 
@@ -420,7 +422,7 @@ void loop()
 {
   
   if(Serial.available() > 0){ 
-    escolha_serial(ler_serial());//Serial.read();
+    escolha_serial(ler_serial()); // Serial.read();
     time_inicio = millis();
     sim_nao = 0;
   }
