@@ -64,7 +64,7 @@ bool sim_nao = 1;
 char liga_desliga = 'L';
 int start = 5; //minutos
 unsigned long time_inicio;
-int controle = 0;
+unsigned long time_salvar;
 float TsTuRu[3] = {0,0,0};
 int DMAHMS[6] = {0,0,0,0,0,0};
 
@@ -86,20 +86,6 @@ float PSIC(float Ts, float Tu, float P, char Tipo='N'){
   float UR = Ea*100/Es1;
   return UR;
 }
-
-//String ler_serial(){
-//  String texto = "";
-//  char leitura_serial;
-//  
-//  while(Serial.available() > 0) {
-//    leitura_serial = Serial.read();
-//    if (leitura_serial != '\n'){
-//      texto.concat(leitura_serial);
-//    }
-//    delay(10);
-//  }
-//  return texto;
-//}
 
 void ler_DMAHMS(){
   DateTime data_hora = rtc.now();
@@ -177,7 +163,6 @@ void UMD(float TEMP, float RU){
   }
 }
 
-
 void ler(){
   if (SD.begin()) {
 //    Serial.println("SD Card pronto para uso."); 
@@ -217,8 +202,6 @@ void apagar(){
   myFile.close();
 
 }
-
-
 
 void inicio(){
 
@@ -262,23 +245,6 @@ void inicio(){
 
     time_inicio = millis();
 }
-
-// void ler_DataHora(){
-//   ler_DMAHMS();
-//   lcd.clear();
-//   lcd.setCursor(0,0);
-//   lcd.print("Data: ");
-//   lcd.print(DMAHMS[0]);
-//   lcd.print("/");
-//   lcd.print(DMAHMS[1]);
-//   lcd.print("/");
-//   lcd.print(DMAHMS[2]);
-//   lcd.setCursor(0,1);
-//   lcd.print("Hora: ");
-//   lcd.print(DMAHMS[3]);
-//   lcd.print(":");
-//   lcd.print(DMAHMS[4]);
-// }
 
 void salvar(int n_temp = 1){
   lcd.clear();
@@ -397,7 +363,6 @@ void loop()
       time_inicio = millis();
       sim_nao = 1;
     }
-    
   }
   
   if ( millis() - time_inicio >= 0 && millis() - time_inicio <= 10000){
@@ -408,16 +373,14 @@ void loop()
   }
   else if (millis() - time_inicio > 10000){
     time_inicio = millis();
-    controle +=1;
     sim_nao = 1;
 
   }
-
-  if ( controle > start*60){ // 1 min = 60000
+  else if ( millis() - time_salvar > start*60000){ // 1 min = 60000
     salvar(10);
     sim_nao = 0;            
     start = 5;
-    controle  = 0;
+    time_salvar  = millis();
     time_inicio = millis();
   }
 
