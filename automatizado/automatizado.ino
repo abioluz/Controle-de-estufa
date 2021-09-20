@@ -60,9 +60,9 @@ RTC_DS1307 rtc; //OBJETO DO TIPO RTC_DS1307 Para Relógio
 
 // const PROGMEM byte endereco = 0;
 const PROGMEM byte RU_MAX = 94; // RU_MAX; // Umidade Relativa máxima de trabalho
-bool sim_nao = 1;
-char liga_desliga = 'L';
-int start = 5; //minutos
+bool sim_nao;
+char liga_desliga;
+int start; //minutos
 unsigned long time_inicio;
 unsigned long time_salvar;
 float TsTuRu[3] = {0,0,0};
@@ -97,38 +97,77 @@ void ler_DMAHMS(){
   DMAHMS[5] = data_hora.second();
 }
 
-void ler_TsTuRu(int n=1){
+void ler_TsTuRu(){
+/*
+  Devido a um problema de leitura dos sensores com o arduino uno, tive que fazer um melhor de 3.
+  A temperatura é lida 3 vezes e guardada. Depois
+  Ainda falta implementar um algoritmo para 
+*/
+
   TsTuRu[0] = 0;
   TsTuRu[1] = 0;
-  
-  for (int i = 0; i < n; i++){
-    do{
-      Temp.requestTemperatures();   
-      if (n > 1){
-        delay(1000);
-      }
- 
-    } while (isnan(Temp.getTempCByIndex(0)) || Temp.getTempCByIndex(0) < 0 || Temp.getTempCByIndex(0) > 60 ||
-            isnan(Temp.getTempCByIndex(1)) || Temp.getTempCByIndex(1) < 0 || Temp.getTempCByIndex(1) > 60 
-          );
-    TsTuRu[0] += Temp.getTempCByIndex(0);
-    TsTuRu[1] += Temp.getTempCByIndex(1);
-//    Serial.print(i+1);
-//    Serial.print(" de ");
-//    Serial.println(n);
-  }
-  TsTuRu[0] /= n;
-  TsTuRu[1] /= n; 
+  float T0[3]= {0,0,0};
+  float T1[3] = {0,0,0};
+  bool controle = false;
+
   do{
-    TsTuRu[2] = PSIC(TsTuRu[0], TsTuRu[1], 101.325);
 
-  } while(isnan(TsTuRu[2]) || TsTuRu[2] < 0 || TsTuRu[2] > 115
-          );
+    for (int i = 0; i < 3; i++){
+      do{
+        Temp.requestTemperatures();   
+          delay(800);
+  
+      } while (isnan(Temp.getTempCByIndex(0)) || Temp.getTempCByIndex(0) < 0 || Temp.getTempCByIndex(0) > 60 ||
+              isnan(Temp.getTempCByIndex(1)) || Temp.getTempCByIndex(1) < 0 || Temp.getTempCByIndex(1) > 60 ||
+              Temp.getTempCByIndex(0) > Temp.getTempCByIndex(1)
+            );
+      T0[i] = Temp.getTempCByIndex(0);
+      T1[i] = Temp.getTempCByIndex(1);
+    }
 
+    if (T0[0] == T0[1]){
+      controle = true;
+    }
+    else if (T0[0] == T0[2]){
+      controle = true;
+    }
+    else if (T0[1] == T0[2]){
+      T0[0] = T0[1];
+      controle = true;
+    }
+
+    if (T1[0] == T1[1]){
+      controle = controle && true;
+    }
+    else if (T1[0] == T1[2]){
+      controle = controle && true;
+    }
+    else if (T1[1] == T1[2]){
+      T1[0] = T1[1];
+      controle = true;
+    }
+    else{
+      controle = false;
+    }
+    if (controle){
+      TsTuRu[0] = T0[0];
+      TsTuRu[1] = T1[0];
+      TsTuRu[2] = PSIC(TsTuRu[0], TsTuRu[1], 101.325);
+    }
+
+  } 
+  while(isnan(TsTuRu[2]) || TsTuRu[2] < 50 || TsTuRu[2] > 100 || !controle);
+    
+
+  // do{
+  //   TsTuRu[2] = PSIC(TsTuRu[0], TsTuRu[1], 101.325);
+
+  // } 
+  // while(isnan(TsTuRu[2]) || TsTuRu[2] < 50 || TsTuRu[2] > 100 );
 }
 
-void ler_temp_hora(int n = 1){
-  ler_TsTuRu(n);
+void ler_temp_hora(){
+  ler_TsTuRu();
   ler_DMAHMS();
   lcd.clear();
   lcd.setCursor(0,0);
@@ -163,7 +202,7 @@ void UMD(float TEMP, float RU){
   }
 }
 
-void ler(){
+void ler_apagar(char n = 'L'){
   if (SD.begin()) {
 //    Serial.println("SD Card pronto para uso."); 
   }
@@ -172,89 +211,61 @@ void ler(){
     return;
   } 
 
-  File myFile = SD.open("estufa.txt");
- 
-  if (myFile) { 
-    while (myFile.available()) {
-      Serial.write(myFile.read());
-    }
-  }
-  else {
-//    Serial.println("Falha na inicialização do SD Card.");
-    return;
-  } 
-  myFile.close();
-}
-
-void apagar(){
-  if (SD.begin()) {
-//    Serial.println("SD Card pronto para uso.");
-  }
-  else {
-//    Serial.println("Falha na inicialização do SD Card.");
-    return;
-  }
-  SD.remove("estufa.txt");
-  File myFile = SD.open("estufa.txt");
-  if (!myFile) { 
-//    Serial.println("Arquivo Apagado com sucesso!");
-  }
-  myFile.close();
-
-}
-
-void inicio(){
-
-    ler_DMAHMS();
-    if (SD.begin()) {
-//      Serial.println("SD Card pronto para uso."); 
+  if (n=='L'){  
+    File myFile = SD.open("estufa.txt");
+  
+    if (myFile) { 
+      while (myFile.available()) {
+        Serial.write(myFile.read());
+      }
     }
     else {
 //      Serial.println("Falha na inicialização do SD Card.");
       return;
-    } 
-    File myFile = SD.open("estufa.txt", FILE_WRITE); 
-    if (myFile) { 
-      myFile.print(DMAHMS[0]);
-      myFile.print("/");
-      myFile.print(DMAHMS[1]);
-      myFile.print("/");
-      myFile.print(DMAHMS[2]);
-      myFile.print(";");
-      myFile.print(DMAHMS[3]);
-      myFile.print(":");
-      myFile.print(DMAHMS[4]);
-      myFile.print(":");
-      myFile.print(DMAHMS[5]);
-      myFile.println(";NAN;NAN;NAN;START");
-//      Serial.println("Salvando dados");
     }
-    else {     
-//      Serial.println("Erro ao Abrir Arquivo .txt");
+    myFile.close();
+  }  
+  else if (n=='A'){
+    SD.remove("estufa.txt");
+    File myFile = SD.open("estufa.txt");
+    if (!myFile) { 
+     Serial.println("Arquivo Apagado com sucesso!");
     }
-    myFile.close(); 
-
-    lcd.clear();
-    lcd.setCursor(0,0);
-    lcd.print("INICIALIZANDO!");
-    lcd.setCursor(0,1);
-    for (byte i=0; i < 16; i++){
-      lcd.print(".");
-      delay(200);
-    }
-
-    time_inicio = millis();
+    myFile.close();
+  }
+  
 }
 
-void salvar(int n_temp = 1){
-  lcd.clear();
-  lcd.setCursor(0,0);
-  lcd.print("GRAVANDO");
-  
-  ler_TsTuRu(n_temp);
+// void apagar(){
+//   if (SD.begin()) {
+// //    Serial.println("SD Card pronto para uso.");
+//   }
+//   else {
+// //    Serial.println("Falha na inicialização do SD Card.");
+//     return;
+//   }
+//   SD.remove("estufa.txt");
+//   File myFile = SD.open("estufa.txt");
+//   if (!myFile) { 
+// //    Serial.println("Arquivo Apagado com sucesso!");
+//   }
+//   myFile.close();
 
+// }
+
+void salvar(bool n = true){
+
+  ler_TsTuRu();
   ler_DMAHMS();
-  UMD(TsTuRu[0],TsTuRu[2]);
+
+  
+  if (n){
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("GRAVANDO");
+    UMD(TsTuRu[0],TsTuRu[2]);
+  }
+
 
   if (SD.begin()) {
 //    Serial.println("SD Card pronto para uso."); 
@@ -283,7 +294,12 @@ void salvar(int n_temp = 1){
     myFile.print(";");
     myFile.print(TsTuRu[1],2);
     myFile.print(";");
-    myFile.println(liga_desliga);
+    if (liga_desliga == 'S'){
+      myFile.println("START");
+    }
+    else{
+      myFile.println(liga_desliga);
+    }
 //    Serial.println("Salvando dados");
   }
   else {     
@@ -292,22 +308,56 @@ void salvar(int n_temp = 1){
   myFile.close(); 
 }
 
+void inicio(){
+    digitalWrite(8, HIGH); // Ativando relé
+    sim_nao = 1;
+    liga_desliga = 'S';
+    start = 15;
+
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("INICIALIZANDO!");
+
+    salvar(false);
+    
+    lcd.setCursor(0,1);
+    for (byte i=0; i < 16; i++){
+      lcd.print(".");
+      delay(100);
+    }
+    liga_desliga = 'L';
+    time_inicio = millis();
+    time_salvar = millis();
+}
+
 void escolha_serial(int dados_serial){
   if (dados_serial == 'L'){
 //    Serial.println("Lendo Arquivo");
-    ler();
+    ler_apagar();
   }
   else if (dados_serial == 'A'){
 //    Serial.println("Apagando");
-    apagar();
-    ler();
+    ler_apagar('A');
+    ler_apagar();
   }
   else if (dados_serial == 'S'){
-    salvar(20);
+    salvar();
+  }
+  else if (dados_serial == 'U'){
+    digitalWrite(8, HIGH);
+  }
+  else if (dados_serial == 'D'){
+    digitalWrite(8, LOW);
+  }
+  else if (dados_serial == 'R'){
+    inicio();
+  }
+  else if (dados_serial == 'T'){
+    start = 1;
   }
   
    else if (dados_serial == 'H'){
-    Serial.println("L=LER, A=APAGAR, S=SALVAR");
+    Serial.println("L=LER, A=APAGAR, S=SALVAR, U=LIGAR UMIDIFICADOR, D=DESLIGAR, R=REINICIAR, T=DIMINUIR TEMPO START");
   //   Serial.println("LER: Para ler os dados salvos no microSD e mostra no serial.");
   //   Serial.println("APAGAR: Apaga todos os dados salvos no microSD.");
   //   Serial.println("SALVAR: Salva os dados no microSD.");
@@ -333,7 +383,6 @@ void setup()
   Temp.setResolution(insideThermometer, 12);
   pinMode(10, OUTPUT); 
   pinMode(8, OUTPUT);  // Porta do relé
-  digitalWrite(8, HIGH); // Ativando relé
   lcd.init();
   lcd.clear();
   lcd.setBacklight(HIGH);
@@ -360,12 +409,20 @@ void loop()
     int leitura_serial = Serial.read();
     if (leitura_serial != 10 && leitura_serial != -1 ){
       escolha_serial(leitura_serial);
-      time_inicio = millis();
-      sim_nao = 1;
+//      time_inicio = millis();
+//      sim_nao = 1;
     }
   }
   
-  if ( millis() - time_inicio >= 0 && millis() - time_inicio <= 10000){
+  if ( millis() - time_salvar > start*60000){ // 1 min = 60000
+    salvar();
+    sim_nao = 0;            
+    start = 5;
+    time_salvar  = millis();
+    time_inicio = millis();
+    return;
+  }
+  else if ( millis() - time_inicio >= 0 && millis() - time_inicio <= 10000){
     if (sim_nao){
       ler_temp_hora();
       sim_nao = 0;
@@ -375,13 +432,6 @@ void loop()
     time_inicio = millis();
     sim_nao = 1;
 
-  }
-  else if ( millis() - time_salvar > start*60000){ // 1 min = 60000
-    salvar(10);
-    sim_nao = 0;            
-    start = 5;
-    time_salvar  = millis();
-    time_inicio = millis();
   }
 
 }
