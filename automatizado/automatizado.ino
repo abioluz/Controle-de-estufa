@@ -1,4 +1,4 @@
-
+Testando
 
 /*
  *Controle de estufa
@@ -158,12 +158,6 @@ void ler_TsTuRu(){
   } 
   while(isnan(TsTuRu[2]) || TsTuRu[2] < 50 || TsTuRu[2] > 100 || !controle);
     
-
-  // do{
-  //   TsTuRu[2] = PSIC(TsTuRu[0], TsTuRu[1], 101.325);
-
-  // } 
-  // while(isnan(TsTuRu[2]) || TsTuRu[2] < 50 || TsTuRu[2] > 100 );
 }
 
 void ler_temp_hora(){
@@ -235,23 +229,6 @@ void ler_apagar(char n = 'L'){
   }
   
 }
-
-// void apagar(){
-//   if (SD.begin()) {
-// //    Serial.println("SD Card pronto para uso.");
-//   }
-//   else {
-// //    Serial.println("Falha na inicialização do SD Card.");
-//     return;
-//   }
-//   SD.remove("estufa.txt");
-//   File myFile = SD.open("estufa.txt");
-//   if (!myFile) { 
-// //    Serial.println("Arquivo Apagado com sucesso!");
-//   }
-//   myFile.close();
-
-// }
 
 void salvar(bool n = true){
 
@@ -371,9 +348,7 @@ void escolha_serial(int dados_serial){
   }
 }
 
-
 ////////////// PROGRAMA //////////////
-
 
 void setup()
 {
@@ -409,8 +384,6 @@ void loop()
     int leitura_serial = Serial.read();
     if (leitura_serial != 10 && leitura_serial != -1 ){
       escolha_serial(leitura_serial);
-//      time_inicio = millis();
-//      sim_nao = 1;
     }
   }
   
