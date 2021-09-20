@@ -1,4 +1,3 @@
-Testando
 
 /*
  *Controle de estufa
@@ -42,14 +41,13 @@ Testando
  *   
  */
  
-//#include "temperature.h"            //Inclusão de biblioteca: Para o calculo do Ponto de orvalho. 
 #include <LiquidCrystal_I2C.h>      //Inclusão de biblioteca: Para usar o LCD.
 #include "RTClib.h"                 //Inclusão de biblioteca: Para poder usar o relógio.
 #include <OneWire.h>                //Inclusão de biblioteca: Para poder usar os sensores de temperatura DS18B20.
 #include <DallasTemperature.h>      //Inclusão de biblioteca: Para poder usar os sensores de temperatura DS18B20.
 #include <SD.h>                     //Inclusão de biblioteca: Para usar o microSSD.
 #include <SPI.h>                    //Inclusão de biblioteca: Para usar o microSSD.   
-// #include <EEPROM.h>     
+     
 
 
 OneWire oneWire(4); // Termometro no pino quatro
@@ -58,21 +56,20 @@ DeviceAddress insideThermometer;
 LiquidCrystal_I2C lcd(0x27,16,2); //Inicializa o display no endereco 0x27
 RTC_DS1307 rtc; //OBJETO DO TIPO RTC_DS1307 Para Relógio
 
-// const PROGMEM byte endereco = 0;
-const PROGMEM byte RU_MAX = 94; // RU_MAX; // Umidade Relativa máxima de trabalho
+
+const PROGMEM byte RU_MAX = 94; // Umidade Relativa máxima de trabalho
 bool sim_nao;
 char liga_desliga;
-int start; //minutos
+int start; 
 unsigned long time_inicio;
 unsigned long time_salvar;
-float TsTuRu[3] = {0,0,0};
-int DMAHMS[6] = {0,0,0,0,0,0};
+
 
 
 ////////////// FUNÇÔES //////////////
 
 // Psicrometro usando dois termometros
-float PSIC(float Ts, float Tu, float P, char Tipo='N'){ 
+float PSIC(float bulbo_seco, float bulbo_umido, float pressao_kPA, char Tipo='N'){ 
   float A;
   if (Tipo == 'F'){
     A = 0.000667; //Com Ventilação forçada
@@ -80,14 +77,14 @@ float PSIC(float Ts, float Tu, float P, char Tipo='N'){
   else{
     A = 0.0008;  //Sem Ventilação forçada
   } 
-  float Es1 = 0.6108*pow(10,((7.5*Ts)/(237.3+Ts)));
-  float Es2 = 0.6108*pow(10,((7.5*Tu)/(237.3+Tu)));
-  float Ea = Es2 - A*P*(Ts-Tu);
+  float Es1 = 0.6108*pow(10,((7.5*bulbo_seco)/(237.3+bulbo_seco)));
+  float Es2 = 0.6108*pow(10,((7.5*bulbo_umido)/(237.3+bulbo_umido)));
+  float Ea = Es2 - A*pressao_kPA*(bulbo_seco-bulbo_umido);
   float UR = Ea*100/Es1;
   return UR;
 }
 
-void ler_DMAHMS(){
+void ler_DMAHMS(int *DMAHMS){
   DateTime data_hora = rtc.now();
   DMAHMS[0] = data_hora.day();
   DMAHMS[1] = data_hora.month();
@@ -97,15 +94,15 @@ void ler_DMAHMS(){
   DMAHMS[5] = data_hora.second();
 }
 
-void ler_TsTuRu(){
+void ler_TsTuRu(float *TsTuRu){
 /*
   Devido a um problema de leitura dos sensores com o arduino uno, tive que fazer um melhor de 3.
-  A temperatura é lida 3 vezes e guardada. Depois
-  Ainda falta implementar um algoritmo para 
+  A temperatura é lida 3 vezes e guardada. Depois é verificado se há pelo menos
+  2 valores correspondentes, se sim então este valor é usado.
+
+  https://cta.if.ufrgs.br/projects/suporte-cta/wiki/DS18B20
 */
 
-  TsTuRu[0] = 0;
-  TsTuRu[1] = 0;
   float T0[3]= {0,0,0};
   float T1[3] = {0,0,0};
   bool controle = false;
@@ -161,8 +158,10 @@ void ler_TsTuRu(){
 }
 
 void ler_temp_hora(){
-  ler_TsTuRu();
-  ler_DMAHMS();
+  float TsTuRu[3];
+  int DMAHMS[6];
+  ler_TsTuRu(TsTuRu);
+  ler_DMAHMS(DMAHMS);
   lcd.clear();
   lcd.setCursor(0,0);
   lcd.print(DMAHMS[0]);
@@ -231,18 +230,19 @@ void ler_apagar(char n = 'L'){
 }
 
 void salvar(bool n = true){
-
-  ler_TsTuRu();
-  ler_DMAHMS();
-
   
+  float TsTuRu[3];
+  ler_TsTuRu(TsTuRu);
+
+  int DMAHMS[6];
+  ler_DMAHMS(DMAHMS);
+
   if (n){
     lcd.clear();
     lcd.setCursor(0,0);
     lcd.print("GRAVANDO");
     UMD(TsTuRu[0],TsTuRu[2]);
   }
-
 
   if (SD.begin()) {
 //    Serial.println("SD Card pronto para uso."); 
@@ -309,11 +309,9 @@ void inicio(){
 
 void escolha_serial(int dados_serial){
   if (dados_serial == 'L'){
-//    Serial.println("Lendo Arquivo");
     ler_apagar();
   }
   else if (dados_serial == 'A'){
-//    Serial.println("Apagando");
     ler_apagar('A');
     ler_apagar();
   }
@@ -350,12 +348,11 @@ void escolha_serial(int dados_serial){
 
 ////////////// PROGRAMA //////////////
 
-void setup()
-{
+void setup(){
   // Inicializando 
   Serial.begin(9600); //INICIALIZA A SERIAL
   Temp.begin(); // Sensor de temperatura
-  Temp.setResolution(insideThermometer, 12);
+  Temp.setResolution(insideThermometer, 12); // Seta a resolução do termometro
   pinMode(10, OUTPUT); 
   pinMode(8, OUTPUT);  // Porta do relé
   lcd.init();
@@ -377,8 +374,7 @@ void setup()
 
 }
  
-void loop()
-{
+void loop(){
   
   if(Serial.available() > 0){ 
     int leitura_serial = Serial.read();
@@ -404,7 +400,6 @@ void loop()
   else if (millis() - time_inicio > 10000){
     time_inicio = millis();
     sim_nao = 1;
-
   }
 
 }
