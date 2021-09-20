@@ -146,7 +146,7 @@ float *ler_TsTuRu(){
 
   https://cta.if.ufrgs.br/projects/suporte-cta/wiki/DS18B20
 */
-  static float TsTuRu;
+  static float TsTuRu[3];
   float T0[3]= {0,0,0};
   float T1[3] = {0,0,0};
   bool controle = false;
