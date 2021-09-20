@@ -38,6 +38,48 @@
  *    p = &x; // pasando o endereço do x para o ponteiro
  *    resultado = *p; // passando o valor do endereço salvo no ponteiro p
  *    Serial.print(resultado); // será mostrado o valor 5
+ * 
+ * Exemplos de uso de ponteiros
+ * 
+ void ponteiro (float *vetor) {                // Aqui é declarado um ponteiro. A função não prescisa ser float
+  vetor[0] = 1;                                // Não se coloca o * na frente da variável vetor. 
+  vetor[1] = 2;
+  vetor[2] = 3;
+  vetor[3] = vetor[0] + vetor[1] + vetor[2];   // As alterações serão feitas na variável que está fora deste escopo.
+  }
+  
+float *umafuncao() {       // Como vamos retornar, a função deve ser float e ela deve ser um
+  static float vetor[2];   // É necessário o static na frente da declaração da variável para dar certo.
+  vetor[0] = random(300);  // as alterações são feitas dentro do escopo da função
+  vetor[1] = random(300);
+  return vetor;             // Ela irá retornar o ponteiro do vetor para fora da função.
+                            // Aqui pode ocorre algo chato.  A variável pode se perder (eu acho), pois está dentro da função
+                            // Pode ser necessário realocar a memória com o malloc()
+}
+
+
+void setup() {
+  Serial.begin(9600);
+  float Po_vetor[4];
+  ponteiro(PO_vetor); // O vetor já é um endereço de ponteiro enão não prescisa do & na frente.
+                      // O resultado é que ele altera o valor do Po_vetor dentro da função.
+                      // é necessário, pois de outra forma dá erro.
+  
+  
+  
+  float *ponteiro_funcao;               // A segunda forma e mais elegante
+  ponteiro_funcao = umafuncao();        // Desta forma fica mais organica, fluida.
+
+  Serial.println(ponteiro_funcao[0]);   // A ponteiro_funcao se comporta como o vetor estabelecido dentro da função.
+  Serial.println(ponteiro_funcao[1]);
+
+
+
+
+}
+
+
+
  *   
  */
  
@@ -84,7 +126,8 @@ float PSIC(float bulbo_seco, float bulbo_umido, float pressao_kPA, char Tipo='N'
   return UR;
 }
 
-void ler_DMAHMS(int *DMAHMS){
+int *ler_DMAHMS(){
+  static int DMAHMS[6];
   DateTime data_hora = rtc.now();
   DMAHMS[0] = data_hora.day();
   DMAHMS[1] = data_hora.month();
@@ -92,9 +135,10 @@ void ler_DMAHMS(int *DMAHMS){
   DMAHMS[3] = data_hora.hour();
   DMAHMS[4] = data_hora.minute();
   DMAHMS[5] = data_hora.second();
+  return DMAHMS;
 }
 
-void ler_TsTuRu(float *TsTuRu){
+float *ler_TsTuRu(){
 /*
   Devido a um problema de leitura dos sensores com o arduino uno, tive que fazer um melhor de 3.
   A temperatura é lida 3 vezes e guardada. Depois é verificado se há pelo menos
@@ -102,7 +146,7 @@ void ler_TsTuRu(float *TsTuRu){
 
   https://cta.if.ufrgs.br/projects/suporte-cta/wiki/DS18B20
 */
-
+  static float TsTuRu;
   float T0[3]= {0,0,0};
   float T1[3] = {0,0,0};
   bool controle = false;
@@ -117,7 +161,7 @@ void ler_TsTuRu(float *TsTuRu){
       } while (isnan(Temp.getTempCByIndex(0)) || Temp.getTempCByIndex(0) < 0 || Temp.getTempCByIndex(0) > 60 ||
               isnan(Temp.getTempCByIndex(1)) || Temp.getTempCByIndex(1) < 0 || Temp.getTempCByIndex(1) > 60 ||
               Temp.getTempCByIndex(0) > Temp.getTempCByIndex(1)
-            );
+              );
       T0[i] = Temp.getTempCByIndex(0);
       T1[i] = Temp.getTempCByIndex(1);
     }
@@ -154,14 +198,15 @@ void ler_TsTuRu(float *TsTuRu){
 
   } 
   while(isnan(TsTuRu[2]) || TsTuRu[2] < 50 || TsTuRu[2] > 100 || !controle);
-    
+  return TsTuRu;
 }
 
 void ler_temp_hora(){
-  float TsTuRu[3];
-  int DMAHMS[6];
-  ler_TsTuRu(TsTuRu);
-  ler_DMAHMS(DMAHMS);
+  float *TsTuRu;
+  int *DMAHMS;
+  TsTuRu = ler_TsTuRu();
+  DMAHMS = ler_DMAHMS();
+
   lcd.clear();
   lcd.setCursor(0,0);
   lcd.print(DMAHMS[0]);
@@ -231,11 +276,10 @@ void ler_apagar(char n = 'L'){
 
 void salvar(bool n = true){
   
-  float TsTuRu[3];
-  ler_TsTuRu(TsTuRu);
-
-  int DMAHMS[6];
-  ler_DMAHMS(DMAHMS);
+  float *TsTuRu;
+  int *DMAHMS;
+  TsTuRu = ler_TsTuRu();
+  DMAHMS = ler_DMAHMS();
 
   if (n){
     lcd.clear();
