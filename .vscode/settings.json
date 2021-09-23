@@ -1,0 +1,13 @@
+{
+    "arduino.path": "/snap/arduino/61",
+    "arduino.commandPath": "arduino",
+    "python.linting.enabled": true,
+    "python.analysis.typeshedPaths": [
+        ".vscode/Pico-Stub"
+    ],
+    "python.languageServer": "Pylance",
+    "python.analysis.typeCheckingMode": "basic",
+    "python.analysis.extraPaths": [
+        ".vscode/Pico-Stub/stubs"
+    ]
+}
