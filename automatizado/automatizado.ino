@@ -163,8 +163,7 @@ float *ler_TsTuRu() {
         contador++;
 
         if (contador >= 30) {
-          //                Serial.println("ERRO TEEMPERATURA");
-          controle_max = 0;
+          Serial.println("ERRO TEEMPERATURA");
           lcd.clear();
           lcd.print("ERRO DE LEITURA");
           lcd.setCursor(0, 1);
@@ -223,10 +222,6 @@ float *ler_TsTuRu() {
       TsTuRu[1] = T1[0];
       TsTuRu[2] = PSIC(TsTuRu[0], TsTuRu[1], 101.325);
       TsTuRu[2] = constrain(TsTuRu[2], 0, 100);
-    }
-
-    if (TsTuRu[2] < umidade) {
-      umidade = TsTuRu[2];
     }
 
   }

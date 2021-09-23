@@ -9,5 +9,9 @@
     "python.analysis.typeCheckingMode": "basic",
     "python.analysis.extraPaths": [
         ".vscode/Pico-Stub/stubs"
+    ],
+    "arduino.defaultBaudRate": 9600,
+    "arduino.ignoreBoards": [
+    
     ]
 }
