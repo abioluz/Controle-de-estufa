@@ -104,8 +104,7 @@ char liga_desliga;
 int start;
 unsigned long time_inicio;
 unsigned long time_salvar;
-int controle_max = 0;
-float umidade = 100;
+
 
 
 
@@ -156,11 +155,7 @@ float *ler_TsTuRu() {
   do {
 
 
-    if (contador > controle_max) {
-      controle_max = contador;
-    }
-    //    Serial.print("controle maximo: ");
-    //    Serial.println(controle_max);
+    
     digitalWrite(5, HIGH);
 
     for (int i = 0; i < 3; i++) {
@@ -184,13 +179,10 @@ float *ler_TsTuRu() {
           digitalWrite(5, HIGH);
           delay(1000);
           contador = 0;
-          //                  lcd.clear();
+     
         }
         delay(750);
-        //        Serial.println(millis());
         Temp.requestTemperatures();
-        //        Serial.println(millis());
-        //      Serial.print(Temp.getResolution(insideThermometer), DEC);
 
       } while (Temp.getTempCByIndex(0) < 0 || Temp.getTempCByIndex(0) > 60 ||
                Temp.getTempCByIndex(1) < 0 || Temp.getTempCByIndex(1) > 60 // ||
@@ -200,20 +192,7 @@ float *ler_TsTuRu() {
       T1[i] = Temp.getTempCByIndex(1);
     }
     digitalWrite(5, LOW);
-    //    Serial.print("\nT0 [");
-    //    Serial.print(T0[0]);
-    //    Serial.print(" ; ");
-    //    Serial.print(T0[1]);
-    //    Serial.print(" ; ");
-    //    Serial.print(T0[2]);
-    //    Serial.println("]");
-    //    Serial.print("T1 [");
-    //    Serial.print(T1[0]);
-    //    Serial.print(" ; ");
-    //    Serial.print(T1[1]);
-    //    Serial.print(" ; ");
-    //    Serial.print(T1[2]);
-    //    Serial.println("]\n");
+    
 
     if (T0[0] == T0[1]) {
       controle = true;
@@ -243,25 +222,16 @@ float *ler_TsTuRu() {
       TsTuRu[0] = T0[0];
       TsTuRu[1] = T1[0];
       TsTuRu[2] = PSIC(TsTuRu[0], TsTuRu[1], 101.325);
-      // TsTuRu[2] = constrain(TsTuRu[2], 0, 100);
+      TsTuRu[2] = constrain(TsTuRu[2], 0, 100);
     }
-    //    Serial.print("umidade: ");
-    //    Serial.println(TsTuRu[2]);
+
     if (TsTuRu[2] < umidade) {
       umidade = TsTuRu[2];
     }
-    //    Serial.print("umidade minima: ");
-    //    Serial.println(umidade);
+
   }
-  while (!controle // ||TsTuRu[2] < HUMIDADE_MINIMA || TsTuRu[2] > 100
+  while (!controle // ||TsTuRu[2] < HUMIDADE_MINIMA || TsTuRu[2] > 100 || isnan(TsTuRu[2])
         );
-  //  Serial.print("\nTsTuRu [");
-  //    Serial.print(TsTuRu[0]);
-  //    Serial.print(" ; ");
-  //    Serial.print(TsTuRu[1]);
-  //    Serial.print(" ; ");
-  //    Serial.print(TsTuRu[2]);
-  //    Serial.println("]\n");
   return TsTuRu;
 }
 
@@ -273,11 +243,7 @@ String zero(int numero) {
   else {
     return String(numero);
   }
-
-
 }
-
-
 
 void ler_temp_hora() {
   float *TsTuRu;
@@ -312,50 +278,14 @@ void ler_temp_hora() {
 
 void UMD(float TEMP, float RU) {
   if (RU <= RU_MAX) {
-    //    Serial.println("Liga");
     liga_desliga = 'L';
     digitalWrite(8, HIGH);
   }
   else {
-    //    Serial.println("Desliga2");
     liga_desliga = 'D';
     digitalWrite(8, LOW);
   }
 }
-
-//void SSD(char n = 'L') {
-//  if (SD.begin()) {
-//    //    Serial.println("SD Card pronto para uso.");
-//  }
-//  else {
-//    //    Serial.println("Falha na inicialização do SD Card.");
-//    return;
-//  }
-//
-//  if (n == 'L') {
-//    File myFile = SD.open("estufa.txt");
-//
-//    if (myFile) {
-//      while (myFile.available()) {
-//        Serial.write(myFile.read());
-//      }
-//    }
-//    else {
-//      //      Serial.println("Falha na inicialização do SD Card.");
-//      return;
-//    }
-//    myFile.close();
-//  }
-//  else if (n == 'A') {
-//    SD.remove("estufa.txt");
-//    File myFile = SD.open("estufa.txt");
-//    if (!myFile) {
-//      Serial.println("Arquivo Apagado com sucesso!");
-//    }
-//    myFile.close();
-//  }
-//
-//}
 
 void SSD(char n = 'S') {
 
@@ -375,7 +305,7 @@ void SSD(char n = 'S') {
     
     if (n == 'S') {
       lcd.clear();
-      lcd.setCursor(0, 0);
+      lcd.setCursor(3, 0);
       lcd.print("GRAVANDO");
       UMD(TsTuRu[0], TsTuRu[2]);
     }
@@ -446,7 +376,7 @@ void inicio() {
   start = 15;
 
   lcd.clear();
-  lcd.setCursor(0, 0);
+  lcd.setCursor(1, 0);
   lcd.print("INICIALIZANDO!");
 
   SSD('I');
