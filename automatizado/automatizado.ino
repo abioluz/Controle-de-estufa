@@ -72,14 +72,7 @@
 
   Serial.println(ponteiro_funcao[0]);   // A ponteiro_funcao se comporta como o vetor estabelecido dentro da função.
   Serial.println(ponteiro_funcao[1]);
-
-
-
-
   }
-
-
-
 
 */
 
@@ -97,15 +90,14 @@ DeviceAddress insideThermometer;
 LiquidCrystal_I2C lcd(0x27, 16, 2); //Inicializa o display no endereco 0x27
 RTC_DS1307 rtc; //OBJETO DO TIPO RTC_DS1307 Para Relógio
 
-#define HUMIDADE_MINIMA 0 //50 // humidade minima para leitura
-const PROGMEM byte RU_MAX = 94; // Umidade Relativa máxima de trabalho
-bool sim_nao;
+#define HUMIDADE_MINIMA 50 //50 // humidade minima para leitura
+const PROGMEM byte RU_MAX = 95; // Umidade Relativa máxima de trabalho
+const PROGMEM byte RU_MIN = 86; // Umidade Relativa minima de trabalho
+// bool sim_nao;
 char liga_desliga;
 int start;
 unsigned long time_inicio;
 unsigned long time_salvar;
-
-
 
 
 ////////////// FUNÇÔES //////////////
@@ -154,21 +146,21 @@ float *ler_TsTuRu() {
 
   do {
 
-
-    
     digitalWrite(5, HIGH);
 
     for (int i = 0; i < 3; i++) {
       do {
+
         contador++;
 
-        if (contador >= 30) {
+        if (contador == 30) {
           Serial.println("ERRO TEEMPERATURA");
           lcd.clear();
           lcd.print("ERRO DE LEITURA");
           lcd.setCursor(0, 1);
           lcd.print("DE TEMERATURA ");
           digitalWrite(8, HIGH);
+          liga_desliga = 'L';
           digitalWrite(5, LOW);
           delay(30000);
           lcd.clear();
@@ -177,11 +169,20 @@ float *ler_TsTuRu() {
           lcd.print("LEITURA");
           digitalWrite(5, HIGH);
           delay(1000);
-          contador = 0;
-     
+//          contador = 0;
         }
-        delay(750);
+        else if (contador >= 60){
+          TsTuRu[0] = NAN;
+          TsTuRu[1]= NAN;
+          TsTuRu[2] = NAN;
+          return TsTuRu;
+        }
+
+        delay(1000);
         Temp.requestTemperatures();
+//       Serial.println(Temp.getTempCByIndex(0));
+//       Serial.println(Temp.getTempCByIndex(1));
+      
 
       } while (Temp.getTempCByIndex(0) < 0 || Temp.getTempCByIndex(0) > 60 ||
                Temp.getTempCByIndex(1) < 0 || Temp.getTempCByIndex(1) > 60 // ||
@@ -189,6 +190,7 @@ float *ler_TsTuRu() {
               );
       T0[i] = Temp.getTempCByIndex(0);
       T1[i] = Temp.getTempCByIndex(1);
+      
     }
     digitalWrite(5, LOW);
     
@@ -225,7 +227,7 @@ float *ler_TsTuRu() {
     }
 
   }
-  while (!controle // ||TsTuRu[2] < HUMIDADE_MINIMA || TsTuRu[2] > 100 || isnan(TsTuRu[2])
+  while (!controle  ||TsTuRu[2] < HUMIDADE_MINIMA || TsTuRu[2] > 100 || isnan(TsTuRu[2])
         );
   return TsTuRu;
 }
@@ -240,11 +242,25 @@ String zero(int numero) {
   }
 }
 
+
+void UMD_min_max(float TEMP, float RU) {
+  if (RU <= RU_MIN || isnan(RU)) {
+    liga_desliga = 'L';
+    digitalWrite(8, HIGH);
+  }
+  else if (RU >= RU_MAX) {
+    liga_desliga = 'D';
+    digitalWrite(8, LOW);
+  }
+}
+
 void ler_temp_hora() {
   float *TsTuRu;
   int *DMAHMS;
   TsTuRu = ler_TsTuRu();
   DMAHMS = ler_DMAHMS();
+
+  UMD_min_max(TsTuRu[0], TsTuRu[2]);
 
   lcd.clear();
   lcd.setCursor(0, 0);
@@ -271,8 +287,10 @@ void ler_temp_hora() {
   lcd.print(liga_desliga);
 }
 
+
+
 void UMD(float TEMP, float RU) {
-  if (RU <= RU_MAX) {
+  if (RU <= RU_MAX || isnan(RU)) {
     liga_desliga = 'L';
     digitalWrite(8, HIGH);
   }
@@ -282,13 +300,15 @@ void UMD(float TEMP, float RU) {
   }
 }
 
-void SSD(char n = 'S') {
 
+void SSD(char n = 'S') {
+  //Serial.print("N = ");
+ // Serial.println(n);
   if (SD.begin()) {
-    //    Serial.println("SD Card pronto para uso.");
+//        Serial.println("SD Card pronto para uso.");
   }
   else {
-    //    Serial.println("Falha na inicialização do SD Card.");
+        Serial.println("Falha na inicialização do SD Card.");
     return;
   }
 
@@ -302,7 +322,8 @@ void SSD(char n = 'S') {
       lcd.clear();
       lcd.setCursor(3, 0);
       lcd.print("GRAVANDO");
-      UMD(TsTuRu[0], TsTuRu[2]);
+//      UMD(TsTuRu[0], TsTuRu[2]);
+      UMD_min_max(TsTuRu[0], TsTuRu[2]);
     }
     
     File myFile = SD.open("estufa.txt", FILE_WRITE);
@@ -331,10 +352,10 @@ void SSD(char n = 'S') {
       else {
         myFile.println(liga_desliga);
       }
-      //    Serial.println("Salvando dados");
+//          Serial.println("Salvando dados");
     }
     else {
-      //    Serial.println("Erro ao Abrir Arquivo .txt");
+          Serial.println("Erro ao Abrir Arquivo .txt");
     }
     myFile.close();
   }
@@ -347,9 +368,10 @@ void SSD(char n = 'S') {
       }
     }
     else {
-      //      Serial.println("Falha na inicialização do SD Card.");
-      return;
-    }
+
+          Serial.println("Erro ao Ler Arquivo .txt");
+    }      
+    
     myFile.close();
 
   }
@@ -366,7 +388,6 @@ void SSD(char n = 'S') {
 
 void inicio() {
 
-  sim_nao = 1;
   liga_desliga = 'S';
   start = 15;
 
@@ -381,12 +402,16 @@ void inicio() {
     lcd.print(".");
     delay(100);
   }
+  
   liga_desliga = 'L';
+  ler_temp_hora();
   time_inicio = millis();
   time_salvar = millis();
+  
 }
 
-void escolha_serial(int dados_serial) {
+void escolha_serial(char dados_serial) {
+//  Serial.println(dados_serial);
   if (dados_serial == 'L') {
     SSD('L');
   }
@@ -417,7 +442,7 @@ void escolha_serial(int dados_serial) {
 
   }
   else {
-    Serial.println("Comando Inválido. Digite H");
+    // Serial.println("Comando Inválido. Digite H");
   }
 }
 
@@ -448,14 +473,16 @@ void setup() {
 
 
   if (! rtc.begin()) {
-    Serial.println("DS1307 não encontrado");
+//    Serial.println("DS1307 não encontrado");
     //while(1);
   }
   if (rtc.isrunning()) {
-    Serial.println("DS1307 rodando!");
+//    Serial.println("DS1307 rodando!");
     // rtc.adjust(DateTime(F(__DATE__), F(__TIME__))); //CAPTURA A DATA E HORA EM QUE O SKETCH É COMPILADO
     // rtc.adjust(DateTime(2018, 7, 5, 1, 1, 1)); //(ANO), (MÊS), (DIA), (HORA), (MINUTOS), (SEGUNDOS)
   }
+//     rtc.adjust(DateTime(F(__DATE__), F(__TIME__))); //CAPTURA A DATA E HORA EM QUE O SKETCH É COMPILADO
+
   inicio();
 
 }
@@ -463,29 +490,24 @@ void setup() {
 void loop() {
 
   if (Serial.available() > 0) {
-    int leitura_serial = Serial.read();
-    if (leitura_serial != 10 && leitura_serial != -1 ) {
+    char leitura_serial = Serial.read();
+    if (leitura_serial != 10 && leitura_serial != -1) {
+//      Serial.println(leitura_serial);
       escolha_serial(leitura_serial);
     }
   }
 
   if ( millis() - time_salvar > start * 60000) { // 1 min = 60000
     SSD('S');
-    sim_nao = 0;
     start = 5;
     time_salvar  = millis();
     time_inicio = millis();
     return;
   }
-  else if ( millis() - time_inicio >= 0 && millis() - time_inicio <= 10000) {
-    if (sim_nao) {
-      ler_temp_hora();
-      sim_nao = 0;
-    }
-  }
+
   else if (millis() - time_inicio > 10000) {
+    ler_temp_hora();
     time_inicio = millis();
-    sim_nao = 1;
   }
 
 }
