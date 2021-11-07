@@ -243,7 +243,7 @@ String zero(int numero) {
 }
 
 
-void UMD_min_max(float TEMP, float RU) {
+void UMD_min_max(float RU) {
   if (RU <= RU_MIN || isnan(RU)) {
     liga_desliga = 'L';
     digitalWrite(8, HIGH);
@@ -260,7 +260,7 @@ void ler_temp_hora() {
   TsTuRu = ler_TsTuRu();
   DMAHMS = ler_DMAHMS();
 
-  UMD_min_max(TsTuRu[0], TsTuRu[2]);
+  UMD_min_max(TsTuRu[2]);
 
   lcd.clear();
   lcd.setCursor(0, 0);
@@ -289,7 +289,7 @@ void ler_temp_hora() {
 
 
 
-void UMD(float TEMP, float RU) {
+void UMD(float RU) {
   if (RU <= RU_MAX || isnan(RU)) {
     liga_desliga = 'L';
     digitalWrite(8, HIGH);
@@ -322,8 +322,8 @@ void SSD(char n = 'S') {
       lcd.clear();
       lcd.setCursor(3, 0);
       lcd.print("GRAVANDO");
-//      UMD(TsTuRu[0], TsTuRu[2]);
-      UMD_min_max(TsTuRu[0], TsTuRu[2]);
+//      UMD(TsTuRu[2]);
+//      UMD_min_max(TsTuRu[2]);
     }
     
     File myFile = SD.open("estufa.txt", FILE_WRITE);
@@ -410,6 +410,8 @@ void inicio() {
   
 }
 
+
+
 void escolha_serial(char dados_serial) {
 //  Serial.println(dados_serial);
   if (dados_serial == 'L') {
@@ -438,7 +440,7 @@ void escolha_serial(char dados_serial) {
   }
 
   else if (dados_serial == 'H') {
-    Serial.println("L=LER, A=APAGAR, S=SALVAR, U=LIGAR UMIDIFICADOR, D=DESLIGAR, R=REINICIAR, T=DIMINUIR TEMPO START");
+    Serial.println("L=LER, A=APAGAR, S=SALVAR, U=LIGAR UMIDIFICADOR, D=DESLIGAR, R=REINICIAR, T=DIMINUIR TEMPO START,");
 
   }
   else {
