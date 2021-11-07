@@ -89,6 +89,9 @@ Aumentar 488 Bytes
 Diminuir de 62%
 Aumentar 770 Bytes
 
+Diminuir de 59%
+Aumentar 824 Bytes
+
 */
 
 #include <LiquidCrystal_I2C.h>      //Inclusão de biblioteca: Para usar o LCD.
@@ -293,23 +296,23 @@ void ler_temp_hora() {
   lcd.setCursor(0, 0);
   lcd.print(zero(DMAHMS[0]));
   lcd.setCursor(2, 0);
-  lcd.print("/");
+  lcd.print(F("/"));
   lcd.print(zero(DMAHMS[1]));
   lcd.setCursor(5, 0);
-  lcd.print("/");
+  lcd.print(F("/"));
   lcd.print(DMAHMS[2]);
   lcd.setCursor(11, 0);
   lcd.print(zero(DMAHMS[3]));
   lcd.setCursor(13, 0);
-  lcd.print(":");
+  lcd.print(F(":"));
   lcd.print(zero(DMAHMS[4]));
   lcd.setCursor(0, 1);
   lcd.print(TsTuRu[0], 2);
   lcd.print((char)223);
-  lcd.print("C ");
+  lcd.print(F("C "));
   lcd.setCursor(8, 1);
   lcd.print(TsTuRu[2], 1);
-  lcd.print("% ");
+  lcd.print(F("% "));
   lcd.setCursor(15, 1);
   lcd.print(liga_desliga);
 }
@@ -334,33 +337,33 @@ void SSD(char n = 'S') {
     if (n == 'S') {
       lcd.clear();
       lcd.setCursor(3, 0);
-      lcd.print("GRAVANDO");
+      lcd.print(F("GRAVANDO"));
 //      UMD(TsTuRu[2]);
 //      UMD_min_max(TsTuRu[2]);
     }
     
-    File myFile = SD.open("estufa.txt", FILE_WRITE);
+    File myFile = SD.open(F("estufa.txt"), FILE_WRITE);
     if (myFile) {
       myFile.print(DMAHMS[0]);
-      myFile.print("/");
+      myFile.print(F("/"));
       myFile.print(DMAHMS[1]);
-      myFile.print("/");
+      myFile.print(F("/"));
       myFile.print(DMAHMS[2]);
-      myFile.print(";");
+      myFile.print(F(";"));
       myFile.print(DMAHMS[3]);
-      myFile.print(":");
+      myFile.print(F(":"));
       myFile.print(DMAHMS[4]);
-      myFile.print(":");
+      myFile.print(F(":"));
       myFile.print(DMAHMS[5]);
-      myFile.print(";");
+      myFile.print(F(";"));
       myFile.print(TsTuRu[0], 2);
-      myFile.print(";");
+      myFile.print(F(";"));
       myFile.print(TsTuRu[1], 2);
-      myFile.print(";");
+      myFile.print(F(";"));
       myFile.print(TsTuRu[2], 2);
-      myFile.print(";");
+      myFile.print(F(";"));
       if (liga_desliga == 'S') {
-        myFile.println("START");
+        myFile.println(F("START"));
       }
       else {
         myFile.println(liga_desliga);
@@ -373,7 +376,7 @@ void SSD(char n = 'S') {
     myFile.close();
   }
   else if (n == 'L') {
-    File myFile = SD.open("estufa.txt");
+    File myFile = SD.open(F("estufa.txt"));
 
     if (myFile) {
       while (myFile.available()) {
@@ -389,8 +392,8 @@ void SSD(char n = 'S') {
 
   }
   else if (n == 'A') {
-    SD.remove("estufa.txt");
-    File myFile = SD.open("estufa.txt");
+    SD.remove(F("estufa.txt"));
+    File myFile = SD.open(F("estufa.txt"));
     if (!myFile) {
       Serial.println(F("Arquivo Apagado com sucesso!"));
     }
@@ -407,13 +410,13 @@ void inicio() {
 
   lcd.clear();
   lcd.setCursor(1, 0);
-  lcd.print("INICIALIZANDO!");
+  lcd.print(F("INICIALIZANDO!"));
 
   SSD('I');
 
   lcd.setCursor(0, 1);
   for (byte i = 0; i < 16; i++) {
-    lcd.print(".");
+    lcd.print(F("."));
     delay(100);
   }
   
@@ -540,7 +543,7 @@ void loop() {
   if (Serial.available() > 0) {
     char leitura_serial = Serial.read();
     if (leitura_serial != 10 && leitura_serial != -1) {
-//      Serial.println(leitura_serial);
+//      Serial.println(F(leitura_serial));
       escolha_serial(leitura_serial);
     }
   }
