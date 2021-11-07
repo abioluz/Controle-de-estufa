@@ -22,6 +22,7 @@
    https://www.filipeflop.com/blog/tutorial-modulo-bluetooth-com-arduino/
    https://www.arduinoportugal.pt/usar-memoria-eeprom-arduino/
    https://www.paulotrentin.com.br/programacao/dicas/lendo-uma-string-com-arduino-via-serial/
+   https://br-arduino.org/2015/06/arduino-progmem-sram.html
 
 
    >>>COLINHA:
@@ -74,6 +75,20 @@
   Serial.println(ponteiro_funcao[1]);
   }
 
+
+
+  Macro F() Ajuda a salvar as strings fora da RAM do arduino. 
+ Serial.println(F("TESTE SOM"));
+*/
+
+
+/*
+Diminuir de 76%
+Aumentar 488 Bytes
+
+Diminuir de 62%
+Aumentar 770 Bytes
+
 */
 
 #include <LiquidCrystal_I2C.h>      //Inclusão de biblioteca: Para usar o LCD.
@@ -81,7 +96,10 @@
 #include <OneWire.h>                //Inclusão de biblioteca: Para poder usar os sensores de temperatura DS18B20.
 #include <DallasTemperature.h>      //Inclusão de biblioteca: Para poder usar os sensores de temperatura DS18B20.
 #include <SD.h>                     //Inclusão de biblioteca: Para usar o microSSD.
-#include <SPI.h>                    //Inclusão de biblioteca: Para usar o microSSD.   
+#include <SPI.h>                    //Inclusão de biblioteca: Para usar o microSSD.  
+#include <EEPROM.h> 
+
+
 
 
 OneWire oneWire(4); // Termometro no pino quatro
@@ -91,13 +109,24 @@ LiquidCrystal_I2C lcd(0x27, 16, 2); //Inicializa o display no endereco 0x27
 RTC_DS1307 rtc; //OBJETO DO TIPO RTC_DS1307 Para Relógio
 
 #define HUMIDADE_MINIMA 50 //50 // humidade minima para leitura
-const PROGMEM byte RU_MAX = 95; // Umidade Relativa máxima de trabalho
-const PROGMEM byte RU_MIN = 86; // Umidade Relativa minima de trabalho
+// const PROGMEM byte RU_MAX = 95; // Umidade Relativa máxima de trabalho
+// const PROGMEM byte RU_MIN = 86; // Umidade Relativa minima de trabalho
+
+int RU_MIN = EEPROM.read(0);
+int RU_MAX = EEPROM.read(2);
+
 // bool sim_nao;
 char liga_desliga;
 int start;
+byte salvar_controle;
 unsigned long time_inicio;
-unsigned long time_salvar;
+// unsigned long time_salvar;
+
+const char frases[2] [36] PROGMEM = {
+  {"Digite a Umidade MINIMA (50 a 100):"},
+  {"Digite a Umidade MAXIMA (50 a 100):"},
+};
+
 
 
 ////////////// FUNÇÔES //////////////
@@ -154,7 +183,7 @@ float *ler_TsTuRu() {
         contador++;
 
         if (contador == 30) {
-          Serial.println("ERRO TEEMPERATURA");
+          Serial.println(F("ERRO TEEMPERATURA"));
           lcd.clear();
           lcd.print("ERRO DE LEITURA");
           lcd.setCursor(0, 1);
@@ -232,7 +261,6 @@ float *ler_TsTuRu() {
   return TsTuRu;
 }
 
-
 String zero(int numero) {
   if (numero >= 0 && numero < 10) {
     return "0" + String(numero);
@@ -241,7 +269,6 @@ String zero(int numero) {
     return String(numero);
   }
 }
-
 
 void UMD_min_max(float RU) {
   if (RU <= RU_MIN || isnan(RU)) {
@@ -287,20 +314,6 @@ void ler_temp_hora() {
   lcd.print(liga_desliga);
 }
 
-
-
-void UMD(float RU) {
-  if (RU <= RU_MAX || isnan(RU)) {
-    liga_desliga = 'L';
-    digitalWrite(8, HIGH);
-  }
-  else {
-    liga_desliga = 'D';
-    digitalWrite(8, LOW);
-  }
-}
-
-
 void SSD(char n = 'S') {
   //Serial.print("N = ");
  // Serial.println(n);
@@ -308,7 +321,7 @@ void SSD(char n = 'S') {
 //        Serial.println("SD Card pronto para uso.");
   }
   else {
-        Serial.println("Falha na inicialização do SD Card.");
+        Serial.println(F("Falha na inicialização do SD Card."));
     return;
   }
 
@@ -352,10 +365,10 @@ void SSD(char n = 'S') {
       else {
         myFile.println(liga_desliga);
       }
-//          Serial.println("Salvando dados");
+        Serial.println(F("Salvando dados"));
     }
     else {
-          Serial.println("Erro ao Abrir Arquivo .txt");
+          Serial.println(F("Erro ao Abrir Arquivo .txt"));
     }
     myFile.close();
   }
@@ -369,7 +382,7 @@ void SSD(char n = 'S') {
     }
     else {
 
-          Serial.println("Erro ao Ler Arquivo .txt");
+          Serial.println(F("Erro ao Ler Arquivo .txt"));
     }      
     
     myFile.close();
@@ -379,7 +392,7 @@ void SSD(char n = 'S') {
     SD.remove("estufa.txt");
     File myFile = SD.open("estufa.txt");
     if (!myFile) {
-      Serial.println("Arquivo Apagado com sucesso!");
+      Serial.println(F("Arquivo Apagado com sucesso!"));
     }
     myFile.close();
   }
@@ -390,6 +403,7 @@ void inicio() {
 
   liga_desliga = 'S';
   start = 15;
+  salvar_controle = 0;
 
   lcd.clear();
   lcd.setCursor(1, 0);
@@ -406,11 +420,23 @@ void inicio() {
   liga_desliga = 'L';
   ler_temp_hora();
   time_inicio = millis();
-  time_salvar = millis();
+//  time_salvar = millis();
   
 }
 
+String ler_serial(){
+  String texto = "";
+  char leitura_serial;
 
+  while(Serial.available() > 0) {
+    leitura_serial = Serial.read();
+    if (leitura_serial != '\n'){
+      texto.concat(leitura_serial);
+    }
+    delay(10);
+  }
+  return texto;
+}
 
 void escolha_serial(char dados_serial) {
 //  Serial.println(dados_serial);
@@ -438,13 +464,34 @@ void escolha_serial(char dados_serial) {
   else if (dados_serial == 'T') {
     start = 1;
   }
+  else if (dados_serial == 'F') {
+
+    for (int i = 0; i<2; i++){
+      String dados_lidos;
+      char Frase[36];
+      memcpy_P(&Frase,&frases[i],sizeof Frase);
+      Serial.println(Frase);
+      
+      do {
+        dados_lidos = ler_serial();
+      }
+      while (dados_lidos == "");
+      EEPROM.write(0*2, dados_lidos.toInt());    
+  
+    }
+    RU_MIN = EEPROM.read(0);
+    RU_MAX = EEPROM.read(2);
+    Serial.println(RU_MIN);
+    Serial.println(RU_MAX);
+
+  }
 
   else if (dados_serial == 'H') {
-    Serial.println("L=LER, A=APAGAR, S=SALVAR, U=LIGAR UMIDIFICADOR, D=DESLIGAR, R=REINICIAR, T=DIMINUIR TEMPO START,");
+    Serial.println(F("L=LER, A=APAGAR, S=SALVAR, U=LIGAR UMIDIFICADOR, D=DESLIGAR, R=REINICIAR, T=DIMINUIR TEMPO START, F=SET FAIXA TEMPERATURA"));
 
   }
   else {
-    // Serial.println("Comando Inválido. Digite H");
+    Serial.println(F("Comando Inválido. Digite H"));
   }
 }
 
@@ -473,7 +520,6 @@ void setup() {
     }
   }
 
-
   if (! rtc.begin()) {
 //    Serial.println("DS1307 não encontrado");
     //while(1);
@@ -499,17 +545,29 @@ void loop() {
     }
   }
 
-  if ( millis() - time_salvar > start * 60000) { // 1 min = 60000
-    SSD('S');
-    start = 5;
-    time_salvar  = millis();
-    time_inicio = millis();
-    return;
-  }
+//  if(Serial.available() > 0){ 
+//     escolha_serial(ler_serial());
+//  }
 
-  else if (millis() - time_inicio > 10000) {
+  // if ( millis() - time_salvar > start * 60000) { // 1 min = 60000
+  //   SSD('S');
+  //   start = 5;
+  //   time_salvar  = millis();
+  //   time_inicio = millis();
+  //   return;
+  // }
+
+  // else if (millis() - time_inicio > 10000) {
+  if (millis() - time_inicio > 10000) {
     ler_temp_hora();
     time_inicio = millis();
+    salvar_controle ++;
+    if (salvar_controle > start*6){
+      SSD('S');
+      start = 5;
+      salvar_controle = 0;
+      time_inicio = millis();
+    }
   }
 
 }
