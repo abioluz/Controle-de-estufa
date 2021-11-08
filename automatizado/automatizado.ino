@@ -95,6 +95,10 @@ Aumentar 824 Bytes
 Diminuir de 57%
 Aumentar 866 Bytes
 
+
+Diminuir de 57%
+Aumentar 862 Bytes
+
 */
 
 #include <LiquidCrystal_I2C.h>      //Inclusão de biblioteca: Para usar o LCD.
@@ -139,8 +143,8 @@ const char ajuda[tamanho_lista][60] PROGMEM = {
   {"U = Liga o Umidificador"},
   {"D = Desliga o Umidificador"},
   {"T = Diminui o tempo de START para 1 minuto aproximadamente."},
-  {"F = Configura a faixa de temperatura."},
-  {"V = Vê os valores da faixa de temperatura salvos."},
+  {"F = Configura a faixa de umidade."},
+  {"V = Vê os valores da faixa de umidade salvos."},
   {"A = APAGAR!"},
   {"R = REINICIAR!"}
 };
@@ -356,7 +360,7 @@ void SSD(char n = 'S') {
 //      UMD_min_max(TsTuRu[2]);
     }
     
-    File myFile = SD.open(F("estufa.txt"), FILE_WRITE);
+    File myFile = SD.open("estufa.txt", FILE_WRITE);
     if (myFile) {
       myFile.print(DMAHMS[0]);
       myFile.print(F("/"));
@@ -390,7 +394,7 @@ void SSD(char n = 'S') {
     myFile.close();
   }
   else if (n == 'L') {
-    File myFile = SD.open(F("estufa.txt"));
+    File myFile = SD.open("estufa.txt");
 
     if (myFile) {
       while (myFile.available()) {
@@ -406,8 +410,8 @@ void SSD(char n = 'S') {
 
   }
   else if (n == 'A') {
-    SD.remove(F("estufa.txt"));
-    File myFile = SD.open(F("estufa.txt"));
+    SD.remove("estufa.txt");
+    File myFile = SD.open("estufa.txt");
     if (!myFile) {
       Serial.println(F("Arquivo Apagado com sucesso!"));
     }
@@ -455,22 +459,22 @@ String ler_serial(){
   return texto;
 }
 
-void ler_faixa_temp(){
+void ler_faixa_umidade(){
   lcd.clear();
   lcd.setCursor(0, 0);
-  lcd.print(F("TEMPERATURA"));
+  lcd.print(F("FAIXA DE UMIDADE"));
   lcd.setCursor(0, 1);
   lcd.print(F("MIN: "));
   lcd.print(RU_MIN);
-  lcd.setCursor(8, 1);
+  lcd.setCursor(9, 1);
   lcd.print(F("MAX: "));
   lcd.print(RU_MAX);
 
-  Serial.print(F("Temperatura MINIMA: "));
+  Serial.print(F("Umidade MINIMA: "));
   Serial.println(RU_MIN);
-  Serial.print(F("Temperatura MAXIMA: "));
+  Serial.print(F("Umidade MAXIMA: "));
   Serial.println(RU_MAX);
-  delay(1000);
+  delay(3000);
 }
 
 void escolha_serial(char dados_serial) {
@@ -479,8 +483,20 @@ void escolha_serial(char dados_serial) {
     SSD('L');
   }
   else if (dados_serial == 'A') {
-    SSD('A');
-    
+    Serial.println(F("VOCÊ ESTÁ PRETES A APAGAR TODOS OS ARQUIVOS!"));
+    Serial.println(F("DIGITE <SIM> PARA APAGAR OU <N> PARA NÃO APAGAR!"));
+    String escolha;
+    do{
+
+      escolha = ler_serial();
+    }
+    while (escolha == "");
+    if (escolha == "SIM"){
+      SSD('A');
+    }
+    else{
+      Serial.println(F("Ufa, foi por pouco!"));
+    }
   }
   else if (dados_serial == 'S') {
     SSD();
@@ -500,7 +516,7 @@ void escolha_serial(char dados_serial) {
     start = 1;
   }
   else if (dados_serial == 'F') {
-    ler_faixa_temp()
+    ler_faixa_umidade();
     
 
     for (int i = 0; i < 2; i++){
@@ -517,12 +533,12 @@ void escolha_serial(char dados_serial) {
   
     }
 
-    ler_faixa_temp()
+    ler_faixa_umidade();
 
   }
 
   else if (dados_serial == 'V') {
-    ler_faixa_temp()
+    ler_faixa_umidade();
   }
 
   else if (dados_serial == 'H') {
@@ -579,6 +595,8 @@ void setup() {
   inicio();
 
 }
+
+
 
 void loop() {
 
