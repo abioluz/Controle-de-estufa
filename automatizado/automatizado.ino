@@ -92,6 +92,9 @@ Aumentar 770 Bytes
 Diminuir de 59%
 Aumentar 824 Bytes
 
+Diminuir de 57%
+Aumentar 866 Bytes
+
 */
 
 #include <LiquidCrystal_I2C.h>      //Inclusão de biblioteca: Para usar o LCD.
@@ -188,17 +191,17 @@ float *ler_TsTuRu() {
         if (contador == 30) {
           Serial.println(F("ERRO TEEMPERATURA"));
           lcd.clear();
-          lcd.print("ERRO DE LEITURA");
+          lcd.print(F("ERRO DE LEITURA"));
           lcd.setCursor(0, 1);
-          lcd.print("DE TEMERATURA ");
+          lcd.print(F("DE TEMERATURA "));
           digitalWrite(8, HIGH);
           liga_desliga = 'L';
           digitalWrite(5, LOW);
           delay(30000);
           lcd.clear();
-          lcd.print("REINICIANDO");
+          lcd.print(F("REINICIANDO"));
           lcd.setCursor(0, 1);
-          lcd.print("LEITURA");
+          lcd.print(F("LEITURA"));
           digitalWrite(5, HIGH);
           delay(1000);
 //          contador = 0;
