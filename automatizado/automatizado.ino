@@ -99,8 +99,6 @@ Aumentar 866 Bytes
 Diminuir de 57%
 Aumentar 862 Bytes
 
-Diminuir de 58%
-Aumentar 854 Bytes
 
 
 
@@ -127,8 +125,8 @@ RTC_DS1307 rtc; //OBJETO DO TIPO RTC_DS1307 Para Relógio
 // const PROGMEM byte RU_MAX = 95; // Umidade Relativa máxima de trabalho
 // const PROGMEM byte RU_MIN = 86; // Umidade Relativa minima de trabalho
 
-int RU_MIN = EEPROM.read(0);
-int RU_MAX = EEPROM.read(2);
+int RU_MIN_MAX[2] = {EEPROM.read(0),EEPROM.read(2)};
+// int RU_MAX = EEPROM.read(2);
 
 // bool sim_nao;
 char liga_desliga;
@@ -297,11 +295,11 @@ String zero(int numero) {
 }
 
 void UMD_min_max(float RU) {
-  if (RU <= RU_MIN || isnan(RU)) {
+  if (RU <= RU_MIN_MAX[0] || isnan(RU)) {
     liga_desliga = 'L';
     digitalWrite(8, HIGH);
   }
-  else if (RU >= RU_MAX) {
+  else if (RU >= RU_MIN_MAX[1]) {
     liga_desliga = 'D';
     digitalWrite(8, LOW);
   }
@@ -456,7 +454,7 @@ String ler_serial(){
 
   while(Serial.available() > 0) {
     leitura_serial = Serial.read();
-    if (leitura_serial != '\n'){
+    if (leitura_serial != '\n' && leitura_serial != 10 && leitura_serial != -1 && leitura_serial != 13){
       texto.concat(leitura_serial);
     }
     delay(10);
@@ -470,15 +468,15 @@ void ler_faixa_umidade(){
   lcd.print(F("FAIXA DE UMIDADE"));
   lcd.setCursor(0, 1);
   lcd.print(F("MIN: "));
-  lcd.print(RU_MIN);
+  lcd.print(RU_MIN_MAX[0]);
   lcd.setCursor(9, 1);
   lcd.print(F("MAX: "));
-  lcd.print(RU_MAX);
+  lcd.print(RU_MIN_MAX[1]);
 
   Serial.print(F("Umidade MINIMA: "));
-  Serial.println(RU_MIN);
+  Serial.println(RU_MIN_MAX[0]);
   Serial.print(F("Umidade MAXIMA: "));
-  Serial.println(RU_MAX);
+  Serial.println(RU_MIN_MAX[1]);
   delay(3000);
 }
 
@@ -534,10 +532,11 @@ void escolha_serial(char dados_serial) {
         dados_lidos = ler_serial();
       }
       while (dados_lidos == "");
-      EEPROM.write(i*2, dados_lidos.toInt());    
+      RU_MIN_MAX[i] = dados_lidos.toInt();
+      // Serial.println(dados_lidos);
+      EEPROM.write(i*2, RU_MIN_MAX[i]);    
   
     }
-
     ler_faixa_umidade();
 
   }
@@ -606,9 +605,9 @@ void setup() {
 void loop() {
 
   if (Serial.available() > 0) {
-    char leitura_serial = Serial.read();
-    if (leitura_serial != 10 && leitura_serial != -1) {
-//      Serial.println(F(leitura_serial));
+    int leitura_serial = Serial.read();
+    if (leitura_serial != 10 && leitura_serial != -1 && leitura_serial != 13) {
+//      Serial.println(leitura_serial);
       escolha_serial(leitura_serial);
     }
   }
@@ -626,16 +625,17 @@ void loop() {
   // }
 
   // else if (millis() - time_inicio > 10000) {
-  if (millis() - time_inicio > 10000) {
-    ler_temp_hora();
-    time_inicio = millis();
-    salvar_controle ++;
-    if (salvar_controle > start*6){
+  
+  if (salvar_controle > start*6){
       SSD('S');
       start = 5;
       salvar_controle = 0;
       time_inicio = millis();
     }
+  else if (millis() - time_inicio > 10000) {
+    ler_temp_hora();
+    time_inicio = millis();
+    salvar_controle ++;
   }
 
 }
