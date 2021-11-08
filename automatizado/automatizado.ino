@@ -471,6 +471,11 @@ void escolha_serial(char dados_serial) {
     start = 1;
   }
   else if (dados_serial == 'F') {
+    Serial.println(F("Temperatura MINIMA:"));
+    Serial.println(RU_MIN);
+    Serial.println(F("Temperatura MAXIMA:"));
+    Serial.println(RU_MAX);
+    
 
     for (int i = 0; i<2; i++){
       String dados_lidos;
@@ -482,7 +487,7 @@ void escolha_serial(char dados_serial) {
         dados_lidos = ler_serial();
       }
       while (dados_lidos == "");
-      EEPROM.write(0*2, dados_lidos.toInt());    
+      EEPROM.write(i*2, dados_lidos.toInt());    
   
     }
     RU_MIN = EEPROM.read(0);
