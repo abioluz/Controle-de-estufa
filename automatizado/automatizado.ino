@@ -99,6 +99,11 @@ Aumentar 866 Bytes
 Diminuir de 57%
 Aumentar 862 Bytes
 
+Diminuir de 58%
+Aumentar 854 Bytes
+
+
+
 */
 
 #include <LiquidCrystal_I2C.h>      //Inclusão de biblioteca: Para usar o LCD.
@@ -360,7 +365,7 @@ void SSD(char n = 'S') {
 //      UMD_min_max(TsTuRu[2]);
     }
     
-    File myFile = SD.open("estufa.txt", FILE_WRITE);
+    File myFile = SD.open(F("estufa.txt"), FILE_WRITE);
     if (myFile) {
       myFile.print(DMAHMS[0]);
       myFile.print(F("/"));
@@ -394,7 +399,7 @@ void SSD(char n = 'S') {
     myFile.close();
   }
   else if (n == 'L') {
-    File myFile = SD.open("estufa.txt");
+    File myFile = SD.open(F("estufa.txt"));
 
     if (myFile) {
       while (myFile.available()) {
@@ -410,8 +415,8 @@ void SSD(char n = 'S') {
 
   }
   else if (n == 'A') {
-    SD.remove("estufa.txt");
-    File myFile = SD.open("estufa.txt");
+    SD.remove(F("estufa.txt"));
+    File myFile = SD.open(F("estufa.txt"));
     if (!myFile) {
       Serial.println(F("Arquivo Apagado com sucesso!"));
     }
