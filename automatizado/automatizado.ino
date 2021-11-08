@@ -132,7 +132,18 @@ const char frases[2] [36] PROGMEM = {
   {"Digite a Umidade MINIMA (50 a 100):"},
   {"Digite a Umidade MAXIMA (50 a 100):"},
 };
-
+const PROGMEM int tamanho_lista = 9;
+const char ajuda[tamanho_lista][60] PROGMEM = {
+  {"L = Lê os dados de temperatura e umidade armazenados."},
+  {"S = Salva os dados de temperatura e umidade atual."},
+  {"U = Liga o Umidificador"},
+  {"D = Desliga o Umidificador"},
+  {"T = Diminui o tempo de START para 1 minuto aproximadamente."},
+  {"F = Configura a faixa de temperatura."},
+  {"V = Vê os valores da faixa de temperatura salvos."},
+  {"A = APAGAR!"},
+  {"R = REINICIAR!"}
+};
 
 
 ////////////// FUNÇÔES //////////////
@@ -444,6 +455,24 @@ String ler_serial(){
   return texto;
 }
 
+void ler_faixa_temp(){
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print(F("TEMPERATURA"));
+  lcd.setCursor(0, 1);
+  lcd.print(F("MIN: "));
+  lcd.print(RU_MIN);
+  lcd.setCursor(8, 1);
+  lcd.print(F("MAX: "));
+  lcd.print(RU_MAX);
+
+  Serial.print(F("Temperatura MINIMA: "));
+  Serial.println(RU_MIN);
+  Serial.print(F("Temperatura MAXIMA: "));
+  Serial.println(RU_MAX);
+  delay(1000);
+}
+
 void escolha_serial(char dados_serial) {
 //  Serial.println(dados_serial);
   if (dados_serial == 'L') {
@@ -471,16 +500,13 @@ void escolha_serial(char dados_serial) {
     start = 1;
   }
   else if (dados_serial == 'F') {
-    Serial.println(F("Temperatura MINIMA:"));
-    Serial.println(RU_MIN);
-    Serial.println(F("Temperatura MAXIMA:"));
-    Serial.println(RU_MAX);
+    ler_faixa_temp()
     
 
-    for (int i = 0; i<2; i++){
+    for (int i = 0; i < 2; i++){
       String dados_lidos;
       char Frase[36];
-      memcpy_P(&Frase,&frases[i],sizeof Frase);
+      memcpy_P(&Frase, &frases[i], sizeof Frase);
       Serial.println(Frase);
       
       do {
@@ -490,16 +516,24 @@ void escolha_serial(char dados_serial) {
       EEPROM.write(i*2, dados_lidos.toInt());    
   
     }
-    RU_MIN = EEPROM.read(0);
-    RU_MAX = EEPROM.read(2);
-    Serial.println(RU_MIN);
-    Serial.println(RU_MAX);
+
+    ler_faixa_temp()
 
   }
 
-  else if (dados_serial == 'H') {
-    Serial.println(F("L=LER, A=APAGAR, S=SALVAR, U=LIGAR UMIDIFICADOR, D=DESLIGAR, R=REINICIAR, T=DIMINUIR TEMPO START, F=SET FAIXA TEMPERATURA"));
+  else if (dados_serial == 'V') {
+    ler_faixa_temp()
+  }
 
+  else if (dados_serial == 'H') {
+
+    for (int i = 0; i < tamanho_lista; i++){
+      String dados_lidos;
+      char Frase[60];
+      memcpy_P(&Frase,&ajuda[i],sizeof Frase);
+      Serial.println(Frase);
+    }
+    
   }
   else {
     Serial.println(F("Comando Inválido. Digite H"));
