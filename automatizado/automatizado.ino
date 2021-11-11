@@ -383,11 +383,17 @@ void SSD(char n = 'S') {
       myFile.print(F(";"));
       myFile.print(TsTuRu[2], 2);
       myFile.print(F(";"));
-      if (liga_desliga == 'S') {
+      if (n == 'I') {
+        myFile.println(F("START"));
+        myFile.print(F(";"));
         myFile.println(F("START"));
       }
       else {
-        myFile.println(liga_desliga);
+        // myFile.println(liga_desliga);
+        myFile.println(RU_MIN_MAX[0]);
+        myFile.print(F(";"));
+        myFile.println(RU_MIN_MAX[1]);
+
       }
         Serial.println(F("Salvando dados"));
     }
@@ -425,7 +431,7 @@ void SSD(char n = 'S') {
 
 void inicio() {
 
-  liga_desliga = 'S';
+  // liga_desliga = 'S';
   start = 15;
   salvar_controle = 0;
 
@@ -441,7 +447,8 @@ void inicio() {
     delay(100);
   }
   
-  liga_desliga = 'L';
+  // liga_desliga = 'L';
+  ler_faixa_umidade();
   ler_temp_hora();
   time_inicio = millis();
 //  time_salvar = millis();
@@ -562,7 +569,6 @@ void escolha_serial(char dados_serial) {
 
 ////////////// PROGRAMA //////////////
 
-
 void setup() {
   // Inicializando
   Serial.begin(9600); //INICIALIZA A SERIAL
@@ -599,8 +605,6 @@ void setup() {
   inicio();
 
 }
-
-
 
 void loop() {
 
