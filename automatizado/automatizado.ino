@@ -579,6 +579,7 @@ void setup() {
 
   pinMode(10, OUTPUT);
   pinMode(8, OUTPUT);  // Porta do relé
+  liga_desliga = 'L';
   digitalWrite(8, HIGH); // Ativando relé
   pinMode(5, OUTPUT); // Alimentação dos Sensores
   digitalWrite(5, HIGH); // Ligar os sensores
