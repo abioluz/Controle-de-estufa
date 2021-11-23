@@ -342,7 +342,7 @@ void SSD(char n = 'S') {
   //Serial.print("N = ");
  // Serial.println(n);
   if (SD.begin()) {
-//        Serial.println("SD Card pronto para uso.");
+    Serial.println(F("SD Card pronto para uso."));
   }
   else {
         Serial.println(F("Falha na inicialização do SD Card."));
