@@ -156,7 +156,7 @@ const char ajuda[tamanho_lista][60] PROGMEM = {
 ////////////// FUNÇÔES //////////////
 
 // Psicrometro usando dois termometros
-float PSIC(float bulbo_seco, float bulbo_umido, float pressao_kPA, char Tipo = 'N') {
+float PSIC(float bulbo_seco, float bulbo_umido, float pressao_kPA, char Tipo = 'F') {
   float A;
   if (Tipo == 'F') {
     A = 0.000667; //Com Ventilação forçada
@@ -169,6 +169,19 @@ float PSIC(float bulbo_seco, float bulbo_umido, float pressao_kPA, char Tipo = '
   float Ea = Es2 - A * pressao_kPA * (bulbo_seco - bulbo_umido);
   float UR = Ea * 100 / Es1;
   return UR;
+}
+
+void LD_Umi(char LigDes){
+  if (LigDes == 'L'){
+    //Liga os Umidificadores
+    liga_desliga = 'L';
+    digitalWrite(8, LOW);
+  }
+  if (LigDes == 'D'){
+     //Desliga os Umidificadores
+    liga_desliga = 'D';
+    digitalWrite(8, HIGH);
+  }
 }
 
 int *ler_DMAHMS() {
@@ -212,8 +225,7 @@ float *ler_TsTuRu() {
           lcd.print(F("ERRO DE LEITURA"));
           lcd.setCursor(0, 1);
           lcd.print(F("DE TEMERATURA "));
-          digitalWrite(8, HIGH);
-          liga_desliga = 'L';
+          LD_Umi('L');
           digitalWrite(5, LOW);
           delay(30000);
           lcd.clear();
@@ -296,12 +308,10 @@ String zero(int numero) {
 
 void UMD_min_max(float RU) {
   if (RU <= RU_MIN_MAX[0] || isnan(RU)) {
-    liga_desliga = 'L';
-    digitalWrite(8, HIGH);
+    LD_Umi('L');
   }
   else if (RU >= RU_MIN_MAX[1]) {
-    liga_desliga = 'D';
-    digitalWrite(8, LOW);
+    LD_Umi('D');
   }
 }
 
@@ -378,8 +388,8 @@ void SSD(char n = 'S') {
       myFile.print(DMAHMS[5]);
       myFile.print(F(";"));
       myFile.print(TsTuRu[0], 2);
-      myFile.print(F(";"));
-      myFile.print(TsTuRu[1], 2);
+//      myFile.print(F(";"));
+//      myFile.print(TsTuRu[1], 2);
       myFile.print(F(";"));
       myFile.print(TsTuRu[2], 2);
       myFile.print(F(";"));
@@ -512,12 +522,10 @@ void escolha_serial(char dados_serial) {
     SSD();
   }
   else if (dados_serial == 'U') {
-    digitalWrite(8, HIGH);
-    liga_desliga = 'L';
+    LD_Umi('L');
   }
   else if (dados_serial == 'D') {
-    digitalWrite(8, LOW);
-    liga_desliga = 'D';
+    LD_Umi('D');
   }
   else if (dados_serial == 'R') {
     inicio();
@@ -579,8 +587,8 @@ void setup() {
 
   pinMode(10, OUTPUT);
   pinMode(8, OUTPUT);  // Porta do relé
-  liga_desliga = 'L';
-  digitalWrite(8, HIGH); // Ativando relé
+  LD_Umi('L'); //Liga os Umidificadores
+  digitalWrite(8, LOW); // Ativando relé
   pinMode(5, OUTPUT); // Alimentação dos Sensores
   digitalWrite(5, HIGH); // Ligar os sensores
 
@@ -616,20 +624,6 @@ void loop() {
       escolha_serial(leitura_serial);
     }
   }
-
-//  if(Serial.available() > 0){ 
-//     escolha_serial(ler_serial());
-//  }
-
-  // if ( millis() - time_salvar > start * 60000) { // 1 min = 60000
-  //   SSD('S');
-  //   start = 5;
-  //   time_salvar  = millis();
-  //   time_inicio = millis();
-  //   return;
-  // }
-
-  // else if (millis() - time_inicio > 10000) {
   
   if (salvar_controle > start*6){
       SSD('S');
