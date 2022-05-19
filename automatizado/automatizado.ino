@@ -17,6 +17,7 @@
 
 
    REFERENCIAS:
+   https://www.usinainfo.com.br/blog/modulo-rtc-ds1307-com-display-16x2-i2c-relogio-arduino-com-despertador/
    https://www.usinainfo.com.br/blog/projeto-arduino-sd-card-leitura-e-escrita-de-dados-no-cartao-micro-sd/
    https://blogmasterwalkershop.com.br/arduino/como-usar-com-arduino-modulo-bluetooth-hc-05-hc-06
    https://www.filipeflop.com/blog/tutorial-modulo-bluetooth-com-arduino/
